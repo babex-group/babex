@@ -3,9 +3,9 @@ package babex
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"log"
 	"encoding/json"
 	"errors"
+	"log"
 	"reflect"
 
 	"github.com/streadway/amqp"
@@ -90,7 +90,7 @@ func (s *Service) BindToExchange(exchange string, key string) error {
 	)
 }
 
-func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem, data interface{}) error {
+func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem, data interface{}, headers map[string]interface{}) error {
 	bData, err := json.Marshal(data)
 
 	if err != nil {
@@ -112,13 +112,18 @@ func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem
 		false,
 		false,
 		amqp.Publishing{
-			Body: b,
+			Body:    b,
+			Headers: headers,
 		},
 	)
 }
 
-func (s Service) Next(msg *Message, data interface{}) error {
+func (s Service) Next(msg *Message, data interface{}, headers map[string]interface{}) error {
 	err := msg.Ack(true)
+
+	if headers == nil {
+		headers = msg.Headers
+	}
 
 	if err != nil {
 		return err
@@ -140,10 +145,6 @@ func (s Service) Next(msg *Message, data interface{}) error {
 
 	log.Printf("Publish message to %s:%s\r\n", nextElement.Exchange, nextElement.Key)
 
-	initialMessage := InitialMessage{
-		Chain: msg.Chain,
-	}
-
 	if nextElement.IsMultiple {
 		val := reflect.ValueOf(data)
 
@@ -151,22 +152,15 @@ func (s Service) Next(msg *Message, data interface{}) error {
 			return ErrorDataIsNotArray
 		}
 
-		items := data.([]interface{})
-
-		for _, item := range items {
-			bData, err := json.Marshal(item)
-
-			if err != nil {
-				return err
-			}
-
-			initialMessage.Data = bData
+		for i := 0; i < val.Len(); i++ {
+			item := val.Index(i).Interface()
 
 			err = s.PublishMessage(
 				nextElement.Exchange,
 				nextElement.Key,
 				msg.Chain,
-				initialMessage,
+				item,
+				headers,
 			)
 
 			if err != nil {
@@ -174,19 +168,12 @@ func (s Service) Next(msg *Message, data interface{}) error {
 			}
 		}
 	} else {
-		bData, err := json.Marshal(data)
-
-		if err != nil {
-			return err
-		}
-
-		initialMessage.Data = bData
-
 		err = s.PublishMessage(
 			nextElement.Exchange,
 			nextElement.Key,
 			msg.Chain,
-			initialMessage,
+			data,
+			headers,
 		)
 
 		if err != nil {

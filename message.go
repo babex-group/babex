@@ -7,9 +7,10 @@ import (
 )
 
 type Message struct {
-	Key   string
-	Chain []*ChainItem
-	Data  json.RawMessage
+	Key     string
+	Chain   []*ChainItem
+	Data    json.RawMessage
+	Headers map[string]interface{}
 
 	msg *amqp.Delivery
 }
@@ -27,10 +28,11 @@ func NewMessage(msg *amqp.Delivery) (*Message, error) {
 	}
 
 	message := Message{
-		Key:   msg.RoutingKey,
-		Chain: initialMessage.Chain,
-		Data:  initialMessage.Data,
-		msg:   msg,
+		Key:     msg.RoutingKey,
+		Chain:   initialMessage.Chain,
+		Data:    initialMessage.Data,
+		msg:     msg,
+		Headers: msg.Headers,
 	}
 
 	return &message, nil
