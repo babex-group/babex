@@ -42,6 +42,10 @@ func (m Message) Ack(status bool) error {
 	return m.msg.Ack(status)
 }
 
+func (m Message) Nack(status bool) error {
+	return m.msg.Nack(false, true)
+}
+
 func (m *Message) SetChain(chain []ChainItem) error {
 	return nil
 }
