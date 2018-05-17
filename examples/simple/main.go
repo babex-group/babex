@@ -2,9 +2,14 @@ package main
 
 import (
 	"log"
+	"encoding/json"
 
 	"github.com/matroskin13/babex"
 )
+
+type Config struct {
+	Name string `json:"name"`
+}
 
 func main() {
 	service, err := babex.NewService(&babex.ServiceConfig{
@@ -24,11 +29,18 @@ func main() {
 	}
 
 	service.Listen(func(message *babex.Message) error {
+		var config Config
+
 		data := string(message.Data)
 
-		log.Println(message.Key, string(message.Data))
+		if err := json.Unmarshal(message.Config, &config); err != nil {
+			log.Println("bad json -> ", string(message.Config))
+			return err
+		}
 
-		err := service.Next(message, []string{data, data})
+		log.Printf("key: %s, config.name: %s, data: %s\r\n", message.Key, config.Name, string(message.Data))
+
+		err := service.Next(message, []string{data, data}, nil)
 
 		if err == babex.ErrorNextIsNotDefined {
 			log.Println("finish!")

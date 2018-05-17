@@ -11,13 +11,15 @@ type Message struct {
 	Chain   []*ChainItem
 	Data    json.RawMessage
 	Headers map[string]interface{}
+	Config  []byte
 
 	msg *amqp.Delivery
 }
 
 type InitialMessage struct {
-	Chain []*ChainItem    `json:"chain"`
-	Data  json.RawMessage `json:"data"`
+	Chain  []*ChainItem    `json:"chain"`
+	Data   json.RawMessage `json:"data"`
+	Config json.RawMessage `json:"config"`
 }
 
 func NewMessage(msg *amqp.Delivery) (*Message, error) {
@@ -33,6 +35,7 @@ func NewMessage(msg *amqp.Delivery) (*Message, error) {
 		Data:    initialMessage.Data,
 		msg:     msg,
 		Headers: msg.Headers,
+		Config:  initialMessage.Config,
 	}
 
 	return &message, nil
@@ -48,4 +51,8 @@ func (m Message) Nack(status bool) error {
 
 func (m *Message) SetChain(chain []ChainItem) error {
 	return nil
+}
+
+func (m *Message) SetConfig(config []byte) {
+	m.Config = json.RawMessage(config)
 }

@@ -90,7 +90,7 @@ func (s *Service) BindToExchange(exchange string, key string) error {
 	)
 }
 
-func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem, data interface{}, headers map[string]interface{}) error {
+func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem, data interface{}, headers map[string]interface{}, config json.RawMessage) error {
 	bData, err := json.Marshal(data)
 
 	if err != nil {
@@ -98,8 +98,9 @@ func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem
 	}
 
 	b, err := json.Marshal(InitialMessage{
-		Data:  bData,
-		Chain: chain,
+		Data:   bData,
+		Chain:  chain,
+		Config: config,
 	})
 
 	if err != nil {
@@ -161,6 +162,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 				msg.Chain,
 				item,
 				headers,
+				msg.Config,
 			)
 
 			if err != nil {
@@ -174,6 +176,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 			msg.Chain,
 			data,
 			headers,
+			msg.Config,
 		)
 
 		if err != nil {
