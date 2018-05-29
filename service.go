@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"log"
 	"reflect"
 
 	"github.com/streadway/amqp"
@@ -144,8 +143,6 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 
 	nextElement := msg.Chain[currIndex+1]
 
-	log.Printf("Publish message to %s:%s\r\n", nextElement.Exchange, nextElement.Key)
-
 	if nextElement.IsMultiple {
 		val := reflect.ValueOf(data)
 
@@ -194,23 +191,12 @@ func (s Service) ListenMessages(msgs <-chan amqp.Delivery, h Handler) error {
 		m, err := NewMessage(&msg)
 
 		if err != nil {
-			log.Println(err)
 			continue
-		}
-
-		currIndex, _ := getCurrentItem(m.Chain)
-
-		log.Printf("Recieve message. Routing key: %s\r\n", msg.RoutingKey)
-
-		if currIndex > 0 {
-			prevItem := m.Chain[currIndex-1]
-			log.Printf("Previous chain item is %s:%s\r\n", prevItem.Exchange, prevItem.Key)
 		}
 
 		err = h(m)
 
 		if err != nil {
-			log.Println(err)
 			continue
 		}
 	}
@@ -232,8 +218,6 @@ func (s Service) Listen(h Handler) error {
 	if err != nil {
 		return err
 	}
-
-	log.Println("service listen queue", s.Queue.Name)
 
 	return s.ListenMessages(msgs, h)
 }
