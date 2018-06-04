@@ -1,8 +1,8 @@
 package main
 
 import (
-	"log"
 	"encoding/json"
+	"log"
 
 	"github.com/matroskin13/babex"
 )
@@ -23,30 +23,47 @@ func main() {
 	}
 
 	err = service.BindToExchange("x.import", "example")
-
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	service.Listen(func(message *babex.Message) error {
-		var config Config
+	msgs, err := service.GetMessages()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		data := string(message.Data)
+	errChan := service.GetErrors()
 
-		if err := json.Unmarshal(message.Config, &config); err != nil {
-			log.Println("bad json -> ", string(message.Config))
-			return err
+	for {
+		select {
+		case msg := <-msgs:
+			err := listen(service, msg)
+			if err != nil {
+				log.Println(err)
+			}
+		case err := <-errChan:
+			log.Fatal("err", err)
 		}
+	}
+}
 
-		log.Printf("key: %s, config.name: %s, data: %s\r\n", message.Key, config.Name, string(message.Data))
+func listen(service *babex.Service, message *babex.Message) error {
+	var config Config
 
-		err := service.Next(message, []string{data, data}, nil)
+	data := string(message.Data)
 
-		if err == babex.ErrorNextIsNotDefined {
-			log.Println("finish!")
-			return nil
-		}
-
+	if err := json.Unmarshal(message.Config, &config); err != nil {
+		log.Println("bad json -> ", string(message.Config))
 		return err
-	})
+	}
+
+	log.Printf("key: %s, config.name: %s, data: %s\r\n", message.Key, config.Name, string(message.Data))
+
+	err := service.Next(message, []string{data, data}, nil)
+	if err == babex.ErrorNextIsNotDefined {
+		log.Println("finish!")
+		return nil
+	}
+
+	return nil
 }

@@ -15,6 +15,7 @@ var (
 	ErrorDataIsNotArray       = errors.New("data is not array. next item of chain has isMultiple flag")
 	ErrorChainIsEmpty         = errors.New("chain is empty")
 	ErrorQueueIsNotInitialize = errors.New("queue is not initialized")
+	ErrorCloseConsumer        = errors.New("close consumer")
 )
 
 type ServiceConfig struct {
@@ -22,6 +23,13 @@ type ServiceConfig struct {
 	Address          string
 	IsSingle         bool
 	SkipDeclareQueue bool
+}
+
+type Service struct {
+	Channel *amqp.Channel
+	Queue   *amqp.Queue
+	ch      chan *Message
+	err     chan error
 }
 
 func NewService(config *ServiceConfig) (*Service, error) {
@@ -35,19 +43,19 @@ func NewService(config *ServiceConfig) (*Service, error) {
 	}
 
 	conn, err := amqp.Dial(config.Address)
-
 	if err != nil {
 		return nil, err
 	}
 
 	ch, err := conn.Channel()
-
 	if err != nil {
 		return nil, err
 	}
 
 	service := Service{
 		Channel: ch,
+		ch:      make(chan *Message),
+		err:     make(chan error),
 	}
 
 	if config.SkipDeclareQueue == false {
@@ -68,11 +76,6 @@ func NewService(config *ServiceConfig) (*Service, error) {
 	}
 
 	return &service, nil
-}
-
-type Service struct {
-	Channel *amqp.Channel
-	Queue   *amqp.Queue
 }
 
 func (s *Service) BindToExchange(exchange string, key string) error {
@@ -161,7 +164,6 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 				headers,
 				msg.Config,
 			)
-
 			if err != nil {
 				return err
 			}
@@ -175,7 +177,6 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 			headers,
 			msg.Config,
 		)
-
 		if err != nil {
 			return err
 		}
@@ -184,27 +185,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 	return nil
 }
 
-type Handler func(message *Message) error
-
-func (s Service) ListenMessages(msgs <-chan amqp.Delivery, h Handler) error {
-	for msg := range msgs {
-		m, err := NewMessage(&msg)
-
-		if err != nil {
-			continue
-		}
-
-		err = h(m)
-
-		if err != nil {
-			continue
-		}
-	}
-
-	return nil
-}
-
-func (s Service) Listen(h Handler) error {
+func (s *Service) GetMessages() (<-chan *Message, error) {
 	msgs, err := s.Channel.Consume(
 		s.Queue.Name,
 		"",
@@ -214,12 +195,29 @@ func (s Service) Listen(h Handler) error {
 		false,
 		nil,
 	)
-
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return s.ListenMessages(msgs, h)
+	go func() {
+		for msg := range msgs {
+			m, err := NewMessage(&msg)
+			if err != nil {
+				msg.Ack(true)
+				continue
+			}
+
+			s.ch <- m
+		}
+
+		s.err <- ErrorCloseConsumer
+	}()
+
+	return s.ch, nil
+}
+
+func (s *Service) GetErrors() chan error {
+	return s.err
 }
 
 func getCurrentItem(chain []*ChainItem) (int, *ChainItem) {
