@@ -53,6 +53,7 @@ for {
 
         if err := json.Unmarshal(msg.Data, &data); err != nil {
             log.Println(err)
+            msg.Ack(false)
             break
         }
 
@@ -62,6 +63,7 @@ for {
 
         if err := json.Unmarshal(msg.Config, &cfg); err != nil {
             log.Println(err)
+            msg.Ack(false)
             break
         }
 
@@ -69,7 +71,7 @@ for {
 
         log.Printf("count = %v, incStep = %v \r\n", data.Count, cfg.IncStep)
 
-        service.Next(msg, data, nil)
+        service.Next(msg, data, nil) // publish to next item of chain (with ack)
     case err := <-errChan:
         log.Fatal("err", err)
     }
