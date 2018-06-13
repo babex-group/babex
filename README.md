@@ -1,10 +1,10 @@
 # Babex
 
-Babex allows you to make chain of microservices on the fly with the help of RabbitMQ.
+Babex allows you to make a chain of microservices on the fly with the help of RabbitMQ.
 
 ## Usage
 
-For example we create service which will add number to counter:
+For example, we create service which will add the number to counter:
 
 First, create service:
 
@@ -12,27 +12,25 @@ First, create service:
 package main
 
 import (
-	"encoding/json"
-	"log"
+    "encoding/json"
+    "log"
 
-	"github.com/matroskin13/babex"
+    "github.com/matroskin13/babex"
 )
 
 func main() {
-	service, err := babex.NewService(&babex.ServiceConfig{
-	    // rabbit addr
-		Address:  "amqp://guest:guest@localhost:5672/",
-		// name of service (name of queue)
-		Name:     "inc-service",
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+    service, err := babex.NewService(&babex.ServiceConfig{
+        Address:  "amqp://guest:guest@localhost:5672/", // rabbit addr
+        Name:     "inc-service", // name of service (name of queue)
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
 
-	err = service.BindToExchange("example", "inc")
-	if err != nil {
-		log.Fatal(err)
-	}
+    err = service.BindToExchange("example", "inc")
+    if err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 
@@ -78,7 +76,7 @@ for {
 }
 ```
 
-And publish message to example/inc:
+And publish the message to example/inc:
 
 ```json
 {
