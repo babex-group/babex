@@ -15,7 +15,6 @@ func main() {
 	service, err := babex.NewService(&babex.ServiceConfig{
 		Address:  "amqp://guest:guest@localhost:5672/",
 		Name:     "example-service",
-		IsSingle: true,
 	})
 
 	if err != nil {
