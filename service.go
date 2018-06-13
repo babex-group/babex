@@ -94,7 +94,6 @@ func (s *Service) BindToExchange(exchange string, key string) error {
 
 func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem, data interface{}, headers map[string]interface{}, config json.RawMessage) error {
 	bData, err := json.Marshal(data)
-
 	if err != nil {
 		return err
 	}
@@ -104,7 +103,6 @@ func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem
 		Chain:  chain,
 		Config: config,
 	})
-
 	if err != nil {
 		return err
 	}
@@ -123,13 +121,12 @@ func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem
 
 func (s Service) Next(msg *Message, data interface{}, headers map[string]interface{}) error {
 	err := msg.Ack(true)
+	if err != nil {
+		return err
+	}
 
 	if headers == nil {
 		headers = msg.Headers
-	}
-
-	if err != nil {
-		return err
 	}
 
 	if msg.Chain == nil {

@@ -7,21 +7,16 @@ import (
 	"github.com/matroskin13/babex"
 )
 
-type Config struct {
-	Name string `json:"name"`
-}
-
 func main() {
 	service, err := babex.NewService(&babex.ServiceConfig{
 		Address:  "amqp://guest:guest@localhost:5672/",
-		Name:     "example-service",
+		Name:     "inc-service",
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = service.BindToExchange("x.import", "example")
+	err = service.BindToExchange("example", "inc")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,33 +31,31 @@ func main() {
 	for {
 		select {
 		case msg := <-msgs:
-			err := listen(service, msg)
-			if err != nil {
+			data := struct {
+				Count int `json:"count"`
+			}{}
+
+			if err := json.Unmarshal(msg.Data, &data); err != nil {
 				log.Println(err)
+				break
 			}
+
+			cfg := struct {
+				IncStep int `json:"incStep"`
+			}{}
+
+			if err := json.Unmarshal(msg.Config, &cfg); err != nil {
+				log.Println(err)
+				break
+			}
+
+			data.Count += cfg.IncStep
+
+			log.Printf("count = %v, incStep = %v \r\n", data.Count, cfg.IncStep)
+
+			service.Next(msg, data, nil)
 		case err := <-errChan:
 			log.Fatal("err", err)
 		}
 	}
-}
-
-func listen(service *babex.Service, message *babex.Message) error {
-	var config Config
-
-	data := string(message.Data)
-
-	if err := json.Unmarshal(message.Config, &config); err != nil {
-		log.Println("bad json -> ", string(message.Config))
-		return err
-	}
-
-	log.Printf("key: %s, config.name: %s, data: %s\r\n", message.Key, config.Name, string(message.Data))
-
-	err := service.Next(message, []string{data, data}, nil)
-	if err == babex.ErrorNextIsNotDefined {
-		log.Println("finish!")
-		return nil
-	}
-
-	return nil
 }
