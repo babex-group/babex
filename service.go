@@ -21,15 +21,18 @@ var (
 type ServiceConfig struct {
 	Name             string
 	Address          string
-	IsSingle         bool
+	IsSingle         bool // if true, service create uniq queue (example - test.adska1231k)
 	SkipDeclareQueue bool
+	AutoAck          bool
 }
 
 type Service struct {
 	Channel *amqp.Channel
 	Queue   *amqp.Queue
-	ch      chan *Message
-	err     chan error
+
+	ch     chan *Message
+	err    chan error
+	config *ServiceConfig
 }
 
 func NewService(config *ServiceConfig) (*Service, error) {
@@ -56,6 +59,7 @@ func NewService(config *ServiceConfig) (*Service, error) {
 		Channel: ch,
 		ch:      make(chan *Message),
 		err:     make(chan error),
+		config:  config,
 	}
 
 	if config.SkipDeclareQueue == false {
@@ -67,7 +71,6 @@ func NewService(config *ServiceConfig) (*Service, error) {
 			false,
 			nil,
 		)
-
 		if err != nil {
 			return nil, err
 		}
@@ -186,7 +189,7 @@ func (s *Service) GetMessages() (<-chan *Message, error) {
 	msgs, err := s.Channel.Consume(
 		s.Queue.Name,
 		"",
-		false,
+		s.config.AutoAck,
 		false,
 		false,
 		false,
@@ -200,7 +203,7 @@ func (s *Service) GetMessages() (<-chan *Message, error) {
 		for msg := range msgs {
 			m, err := NewMessage(&msg)
 			if err != nil {
-				msg.Ack(true)
+				msg.Ack(false)
 				continue
 			}
 
