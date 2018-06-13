@@ -1,5 +1,7 @@
 # Babex
 
+[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/matroskin13/babex)
+
 Babex allows you to make a chain of microservices on the fly with the help of RabbitMQ.
 
 ## Usage

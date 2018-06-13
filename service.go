@@ -19,9 +19,9 @@ var (
 )
 
 type ServiceConfig struct {
-	Name             string
-	Address          string
-	IsSingle         bool // if true, service create uniq queue (example - test.adska1231k)
+	Name             string // name of your service, and for declare queue
+	Address          string // addr for rabbit, example amqp://guest:guest@localhost:5672
+	IsSingle         bool   // if true, service create uniq queue (example - test.adska1231k)
 	SkipDeclareQueue bool
 	AutoAck          bool
 }
@@ -35,6 +35,7 @@ type Service struct {
 	config *ServiceConfig
 }
 
+// Create Babex service
 func NewService(config *ServiceConfig) (*Service, error) {
 	qName := config.Name
 
@@ -185,6 +186,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 	return nil
 }
 
+// Get channel for receive messages
 func (s *Service) GetMessages() (<-chan *Message, error) {
 	msgs, err := s.Channel.Consume(
 		s.Queue.Name,
@@ -216,6 +218,7 @@ func (s *Service) GetMessages() (<-chan *Message, error) {
 	return s.ch, nil
 }
 
+// Get channel for fatal errors
 func (s *Service) GetErrors() chan error {
 	return s.err
 }

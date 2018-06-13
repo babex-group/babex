@@ -41,12 +41,12 @@ func NewMessage(msg *amqp.Delivery) (*Message, error) {
 	return &message, nil
 }
 
-func (m Message) Ack(status bool) error {
-	return m.msg.Ack(status)
+func (m Message) Ack(multiple bool) error {
+	return m.msg.Ack(multiple)
 }
 
-func (m Message) Nack(status bool) error {
-	return m.msg.Nack(false, true)
+func (m Message) Nack(multiple bool) error {
+	return m.msg.Nack(multiple, true)
 }
 
 func (m *Message) SetChain(chain []ChainItem) error {
