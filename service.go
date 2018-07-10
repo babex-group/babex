@@ -124,7 +124,7 @@ func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem
 }
 
 func (s Service) Next(msg *Message, data interface{}, headers map[string]interface{}) error {
-	err := msg.Ack(true)
+	err := msg.Ack(false)
 	if err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func (s *Service) GetMessages() (<-chan *Message, error) {
 
 	go func() {
 		for msg := range msgs {
-			m, err := NewMessage(&msg)
+			m, err := NewMessage(msg)
 			if err != nil {
 				msg.Ack(false)
 				continue
