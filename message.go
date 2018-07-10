@@ -13,7 +13,7 @@ type Message struct {
 	Headers map[string]interface{}
 	Config  []byte
 
-	msg *amqp.Delivery
+	msg amqp.Delivery
 }
 
 type InitialMessage struct {
@@ -22,7 +22,7 @@ type InitialMessage struct {
 	Config json.RawMessage `json:"config"`
 }
 
-func NewMessage(msg *amqp.Delivery) (*Message, error) {
+func NewMessage(msg amqp.Delivery) (*Message, error) {
 	var initialMessage InitialMessage
 
 	if err := json.Unmarshal(msg.Body, &initialMessage); err != nil {

@@ -203,8 +203,7 @@ func (s *Service) GetMessages() (<-chan *Message, error) {
 
 	go func() {
 		for msg := range msgs {
-			cmsg := msg
-			m, err := NewMessage(&cmsg)
+			m, err := NewMessage(msg)
 			if err != nil {
 				msg.Ack(false)
 				continue
