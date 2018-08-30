@@ -2,9 +2,12 @@ package babex
 
 import (
 	"encoding/json"
-
-	"github.com/streadway/amqp"
 )
+
+type RawMessage interface {
+	Ack(multiple bool) error
+	Nack(multiple bool) error
+}
 
 type Message struct {
 	Key     string
@@ -13,46 +16,11 @@ type Message struct {
 	Headers map[string]interface{}
 	Config  []byte
 
-	msg amqp.Delivery
+	RawMessage RawMessage
 }
 
 type InitialMessage struct {
 	Chain  []*ChainItem    `json:"chain"`
 	Data   json.RawMessage `json:"data"`
 	Config json.RawMessage `json:"config"`
-}
-
-func NewMessage(msg amqp.Delivery) (*Message, error) {
-	var initialMessage InitialMessage
-
-	if err := json.Unmarshal(msg.Body, &initialMessage); err != nil {
-		return nil, err
-	}
-
-	message := Message{
-		Key:     msg.RoutingKey,
-		Chain:   initialMessage.Chain,
-		Data:    initialMessage.Data,
-		msg:     msg,
-		Headers: msg.Headers,
-		Config:  initialMessage.Config,
-	}
-
-	return &message, nil
-}
-
-func (m Message) Ack(multiple bool) error {
-	return m.msg.Ack(multiple)
-}
-
-func (m Message) Nack(multiple bool) error {
-	return m.msg.Nack(multiple, true)
-}
-
-func (m *Message) SetChain(chain []ChainItem) error {
-	return nil
-}
-
-func (m *Message) SetConfig(config []byte) {
-	m.Config = json.RawMessage(config)
 }
