@@ -1,130 +1,37 @@
 package babex
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"reflect"
-
-	"github.com/streadway/amqp"
 )
 
 var (
-	ErrorNextIsNotDefined     = errors.New("next is not defined")
-	ErrorDataIsNotArray       = errors.New("data is not array. next item of chain has isMultiple flag")
-	ErrorChainIsEmpty         = errors.New("chain is empty")
-	ErrorQueueIsNotInitialize = errors.New("queue is not initialized")
-	ErrorCloseConsumer        = errors.New("close consumer")
+	ErrorNextIsNotDefined = errors.New("next is not defined")
+	ErrorDataIsNotArray   = errors.New("data is not array. next item of chain has isMultiple flag")
+	ErrorChainIsEmpty     = errors.New("chain is empty")
+	ErrorCloseConsumer    = errors.New("close consumer")
 )
 
-type ServiceConfig struct {
-	Name             string // name of your service, and for declare queue
-	Address          string // addr for rabbit, example amqp://guest:guest@localhost:5672
-	IsSingle         bool   // if true, service create uniq queue (example - test.adska1231k)
-	SkipDeclareQueue bool
-	AutoAck          bool
-}
-
 type Service struct {
-	Channel *amqp.Channel
-	Queue   *amqp.Queue
-
-	ch     chan *Message
-	err    chan error
-	config *ServiceConfig
+	adapter Adapter
 }
 
 // Create Babex service
-func NewService(config *ServiceConfig) (*Service, error) {
-	qName := config.Name
-
-	if config.IsSingle {
-		hash := md5.New()
-		hash.Write([]byte(qName))
-
-		qName = config.Name + "." + hex.EncodeToString(hash.Sum(nil))
-	}
-
-	conn, err := amqp.Dial(config.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := conn.Channel()
-	if err != nil {
-		return nil, err
-	}
-
+func NewService(adapter Adapter) *Service {
 	service := Service{
-		Channel: ch,
-		ch:      make(chan *Message),
-		err:     make(chan error),
-		config:  config,
+		adapter: adapter,
 	}
 
-	if config.SkipDeclareQueue == false {
-		q, err := ch.QueueDeclare(
-			qName,
-			false,
-			false,
-			false,
-			false,
-			nil,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		service.Queue = &q
-	}
-
-	return &service, nil
-}
-
-func (s *Service) BindToExchange(exchange string, key string) error {
-	if s.Queue == nil {
-		return ErrorQueueIsNotInitialize
-	}
-
-	return s.Channel.QueueBind(
-		s.Queue.Name,
-		key,
-		exchange,
-		false,
-		nil,
-	)
+	return &service
 }
 
 func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem, data interface{}, headers map[string]interface{}, config json.RawMessage) error {
-	bData, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-
-	b, err := json.Marshal(InitialMessage{
-		Data:   bData,
-		Chain:  chain,
-		Config: config,
-	})
-	if err != nil {
-		return err
-	}
-
-	return s.Channel.Publish(
-		exchange,
-		key,
-		false,
-		false,
-		amqp.Publishing{
-			Body:    b,
-			Headers: headers,
-		},
-	)
+	return s.adapter.PublishMessage(exchange, key, chain, data, headers, config)
 }
 
 func (s Service) Next(msg *Message, data interface{}, headers map[string]interface{}) error {
-	err := msg.Ack(false)
+	err := msg.RawMessage.Ack(true)
 	if err != nil {
 		return err
 	}
@@ -157,7 +64,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 		for i := 0; i < val.Len(); i++ {
 			item := val.Index(i).Interface()
 
-			err = s.PublishMessage(
+			err := s.adapter.PublishMessage(
 				nextElement.Exchange,
 				nextElement.Key,
 				msg.Chain,
@@ -170,7 +77,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 			}
 		}
 	} else {
-		err = s.PublishMessage(
+		err := s.adapter.PublishMessage(
 			nextElement.Exchange,
 			nextElement.Key,
 			msg.Chain,
@@ -188,39 +95,12 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 
 // Get channel for receive messages
 func (s *Service) GetMessages() (<-chan *Message, error) {
-	msgs, err := s.Channel.Consume(
-		s.Queue.Name,
-		"",
-		s.config.AutoAck,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	go func() {
-		for msg := range msgs {
-			m, err := NewMessage(msg)
-			if err != nil {
-				msg.Ack(false)
-				continue
-			}
-
-			s.ch <- m
-		}
-
-		s.err <- ErrorCloseConsumer
-	}()
-
-	return s.ch, nil
+	return s.adapter.GetMessages()
 }
 
 // Get channel for fatal errors
 func (s *Service) GetErrors() chan error {
-	return s.err
+	return s.adapter.GetErrors()
 }
 
 func getCurrentItem(chain []*ChainItem) (int, *ChainItem) {

@@ -5,18 +5,21 @@ import (
 	"log"
 
 	"github.com/matroskin13/babex"
+	"github.com/matroskin13/babex/adapters/rabbit"
 )
 
 func main() {
-	service, err := babex.NewService(&babex.ServiceConfig{
-		Address:  "amqp://guest:guest@localhost:5672/",
-		Name:     "inc-service",
+	adapter, err := rabbit.NewAdapter(rabbit.Options{
+		Address: "amqp://guest:guest@localhost:5672/",
+		Name:    "inc-service",
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = service.BindToExchange("example", "inc")
+	service := babex.NewService(adapter)
+
+	err = adapter.BindToExchange("example", "inc")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,7 +56,14 @@ func main() {
 
 			log.Printf("count = %v, incStep = %v \r\n", data.Count, cfg.IncStep)
 
-			service.Next(msg, data, nil)
+			err := service.Next(msg, data, nil)
+			if err == babex.ErrorNextIsNotDefined {
+				log.Println("chain is over")
+			} else if err != nil {
+				log.Println("cannot publish", err)
+			} else {
+				log.Println("publish next")
+			}
 		case err := <-errChan:
 			log.Fatal("err", err)
 		}
