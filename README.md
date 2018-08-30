@@ -32,7 +32,7 @@ func main() {
 
     service := babex.NewService(adapter)
 
-    err = service.BindToExchange("example", "inc")
+    err = adapter.BindToExchange("example", "inc")
     if err != nil {
         log.Fatal(err)
     }
