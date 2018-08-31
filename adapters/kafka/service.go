@@ -1,4 +1,4 @@
-package rabbit
+package kafka
 
 import (
 	"encoding/json"
