@@ -18,7 +18,7 @@ type Adapter struct {
 }
 
 type Options struct {
-	Name   string // name of your service, and for declare queue
+	Name   string
 	Addrs  []string
 	Topics []string
 
