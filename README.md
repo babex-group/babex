@@ -138,6 +138,10 @@ $ 2018/06/13 13:51:35 count = 2, incStep = 2
 $ 2018/06/13 13:51:35 count = 4, incStep = 2
 ```
 
+## Adapters
+
+Babex has support adapters for Kafka and RabbitMQ.
+
 ## Other languages
 
 - Node.js - https://github.com/spyzhov/babex-node
