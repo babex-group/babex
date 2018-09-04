@@ -19,7 +19,7 @@ func main() {
 	}
 
 	b, err := json.Marshal(babex.InitialMessage{
-		Chain: []*babex.ChainItem{
+		Chain: []babex.ChainItem{
 			{
 				Exchange: "example",
 				Key:      "inc",

@@ -93,7 +93,7 @@ func (a *Adapter) GetErrors() chan error {
 	return a.err
 }
 
-func (a *Adapter) PublishMessage(exchange string, key string, chain []*babex.ChainItem, data interface{}, headers map[string]interface{}, config json.RawMessage) error {
+func (a *Adapter) PublishMessage(exchange string, key string, chain []babex.ChainItem, data interface{}, headers map[string]interface{}, config json.RawMessage) error {
 	bData, err := json.Marshal(data)
 	if err != nil {
 		return err

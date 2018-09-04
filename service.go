@@ -26,10 +26,11 @@ func NewService(adapter Adapter) *Service {
 	return &service
 }
 
-func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem, data interface{}, headers map[string]interface{}, config json.RawMessage) error {
+func (s *Service) PublishMessage(exchange string, key string, chain []ChainItem, data interface{}, headers map[string]interface{}, config json.RawMessage) error {
 	return s.adapter.PublishMessage(exchange, key, chain, data, headers, config)
 }
 
+// Publish the message to next elements of chain
 func (s Service) Next(msg *Message, data interface{}, headers map[string]interface{}) error {
 	err := msg.RawMessage.Ack(true)
 	if err != nil {
@@ -44,15 +45,14 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 		return ErrorChainIsEmpty
 	}
 
-	currIndex, currElement := getCurrentItem(msg.Chain)
+	chain := SetCurrentItemSuccess(msg.Chain)
 
-	currElement.Successful = true
-
-	if len(msg.Chain) <= currIndex+1 {
+	nextIndex := getCurrentChainIndex(chain)
+	if nextIndex == -1 {
 		return ErrorNextIsNotDefined
 	}
 
-	nextElement := msg.Chain[currIndex+1]
+	nextElement := chain[nextIndex]
 
 	if nextElement.IsMultiple {
 		val := reflect.ValueOf(data)
@@ -67,7 +67,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 			err := s.adapter.PublishMessage(
 				nextElement.Exchange,
 				nextElement.Key,
-				msg.Chain,
+				chain,
 				item,
 				headers,
 				msg.Config,
@@ -80,7 +80,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 		err := s.adapter.PublishMessage(
 			nextElement.Exchange,
 			nextElement.Key,
-			msg.Chain,
+			chain,
 			data,
 			headers,
 			msg.Config,

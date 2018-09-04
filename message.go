@@ -11,7 +11,7 @@ type RawMessage interface {
 
 type Message struct {
 	Key     string
-	Chain   []*ChainItem
+	Chain   Chain
 	Data    json.RawMessage
 	Headers map[string]interface{}
 	Config  []byte
@@ -20,7 +20,7 @@ type Message struct {
 }
 
 type InitialMessage struct {
-	Chain  []*ChainItem    `json:"chain"`
+	Chain  Chain           `json:"chain"`
 	Data   json.RawMessage `json:"data"`
 	Config json.RawMessage `json:"config"`
 }
