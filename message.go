@@ -26,7 +26,7 @@ type InitialMessage struct {
 }
 
 func (m Message) Ack(multiple bool) error {
-	return m.RawMessage.Nack(multiple)
+	return m.RawMessage.Ack(multiple)
 }
 
 func (m Message) Nack(multiple bool) error {
