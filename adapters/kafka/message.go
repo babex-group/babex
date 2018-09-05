@@ -16,6 +16,7 @@ func NewMessage(consumer *cluster.Consumer, msg *sarama.ConsumerMessage) (*babex
 	}
 
 	message := babex.Message{
+		Exchange:       msg.Topic,
 		Key:            string(msg.Key),
 		Chain:          initialMessage.Chain,
 		Data:           initialMessage.Data,

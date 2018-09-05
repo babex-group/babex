@@ -10,12 +10,13 @@ type RawMessage interface {
 }
 
 type Message struct {
-	Key     string
-	Chain   Chain
-	Data    json.RawMessage
-	Headers map[string]interface{}
-	Config  []byte
-	Meta    map[string]string
+	Exchange string
+	Key      string
+	Chain    Chain
+	Data     json.RawMessage
+	Headers  map[string]interface{}
+	Config   []byte
+	Meta     map[string]string
 
 	InitialMessage *InitialMessage
 	RawMessage     RawMessage

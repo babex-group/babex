@@ -15,6 +15,7 @@ func NewMessage(msg *amqp.Delivery) (*babex.Message, error) {
 	}
 
 	message := babex.Message{
+		Exchange:       msg.Exchange,
 		Key:            msg.RoutingKey,
 		Chain:          initialMessage.Chain,
 		Data:           initialMessage.Data,
