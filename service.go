@@ -31,14 +31,14 @@ func (s *Service) PublishMessage(exchange string, key string, chain []ChainItem,
 }
 
 // Publish the message to next elements of chain
-func (s Service) Next(msg *Message, data interface{}, headers map[string]interface{}) error {
+func (s Service) Next(msg *Message, data interface{}, meta map[string]string) error {
 	err := msg.RawMessage.Ack(true)
 	if err != nil {
 		return err
 	}
 
-	if headers == nil {
-		headers = msg.Headers
+	if meta == nil {
+		meta = msg.Meta
 	}
 
 	if msg.Chain == nil {
@@ -69,7 +69,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 				nextElement.Key,
 				chain,
 				item,
-				msg.Meta,
+				meta,
 				msg.Config,
 			)
 			if err != nil {
@@ -82,7 +82,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 			nextElement.Key,
 			chain,
 			data,
-			msg.Meta,
+			meta,
 			msg.Config,
 		)
 		if err != nil {
