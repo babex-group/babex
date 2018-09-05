@@ -16,11 +16,13 @@ func NewMessage(consumer *cluster.Consumer, msg *sarama.ConsumerMessage) (*babex
 	}
 
 	message := babex.Message{
-		Key:        string(msg.Key),
-		Chain:      initialMessage.Chain,
-		Data:       initialMessage.Data,
-		Config:     initialMessage.Config,
-		RawMessage: KafkaMessage{msg: msg, consumer: consumer},
+		Key:            string(msg.Key),
+		Chain:          initialMessage.Chain,
+		Data:           initialMessage.Data,
+		Config:         initialMessage.Config,
+		Meta:           initialMessage.Meta,
+		RawMessage:     KafkaMessage{msg: msg, consumer: consumer},
+		InitialMessage: &initialMessage,
 	}
 
 	return &message, nil

@@ -26,8 +26,8 @@ func NewService(adapter Adapter) *Service {
 	return &service
 }
 
-func (s *Service) PublishMessage(exchange string, key string, chain []ChainItem, data interface{}, headers map[string]interface{}, config json.RawMessage) error {
-	return s.adapter.PublishMessage(exchange, key, chain, data, headers, config)
+func (s *Service) PublishMessage(exchange string, key string, chain []ChainItem, data interface{}, meta map[string]string, config json.RawMessage) error {
+	return s.adapter.PublishMessage(exchange, key, chain, data, meta, config)
 }
 
 // Publish the message to next elements of chain
@@ -69,7 +69,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 				nextElement.Key,
 				chain,
 				item,
-				headers,
+				msg.Meta,
 				msg.Config,
 			)
 			if err != nil {
@@ -82,7 +82,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 			nextElement.Key,
 			chain,
 			data,
-			headers,
+			msg.Meta,
 			msg.Config,
 		)
 		if err != nil {

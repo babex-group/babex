@@ -15,12 +15,14 @@ func NewMessage(msg *amqp.Delivery) (*babex.Message, error) {
 	}
 
 	message := babex.Message{
-		Key:        msg.RoutingKey,
-		Chain:      initialMessage.Chain,
-		Data:       initialMessage.Data,
-		Headers:    msg.Headers,
-		Config:     initialMessage.Config,
-		RawMessage: RabbitMessage{msg: msg},
+		Key:            msg.RoutingKey,
+		Chain:          initialMessage.Chain,
+		Data:           initialMessage.Data,
+		Headers:        msg.Headers,
+		Config:         initialMessage.Config,
+		Meta:           initialMessage.Meta,
+		RawMessage:     RabbitMessage{msg: msg},
+		InitialMessage: &initialMessage,
 	}
 
 	return &message, nil
