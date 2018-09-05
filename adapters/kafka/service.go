@@ -53,7 +53,7 @@ func NewAdapter(options Options) (*Adapter, error) {
 	adapter := Adapter{
 		Consumer: consumer,
 		options:  options,
-		Producer: &producer,
+		Producer: producer,
 		ch:       make(chan *babex.Message),
 		err:      make(chan error),
 	}
