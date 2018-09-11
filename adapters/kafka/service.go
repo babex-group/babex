@@ -103,6 +103,7 @@ func (a *Adapter) PublishMessage(exchange string, key string, chain []babex.Chai
 		Data:   bData,
 		Chain:  chain,
 		Config: config,
+		Meta:   meta,
 	})
 	if err != nil {
 		return err
