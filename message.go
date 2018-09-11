@@ -27,6 +27,7 @@ type InitialMessage struct {
 	Data   json.RawMessage   `json:"data"`
 	Config json.RawMessage   `json:"config"`
 	Meta   map[string]string `json:"meta"`
+	Catch  Chain             `json:"catch"`
 }
 
 func (m Message) Ack(multiple bool) error {

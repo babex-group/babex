@@ -30,6 +30,21 @@ func (s *Service) PublishMessage(exchange string, key string, chain []ChainItem,
 	return s.adapter.PublishMessage(exchange, key, chain, data, meta, config)
 }
 
+func (s *Service) Catch(msg *Message, err error) error {
+	if len(msg.InitialMessage.Catch) == 0 {
+		return nil
+	}
+
+	return s.adapter.PublishMessage(
+		msg.InitialMessage.Catch[0].Exchange,
+		msg.InitialMessage.Catch[0].Key,
+		msg.InitialMessage.Catch,
+		CatchData{Error: err, Exchange: msg.Exchange, Key: msg.Key},
+		nil,
+		msg.Config,
+	)
+}
+
 // Publish the message to next elements of chain
 func (s Service) Next(msg *Message, data interface{}, meta map[string]string) error {
 	err := msg.RawMessage.Ack(true)
@@ -107,14 +122,4 @@ func (s *Service) GetMessages() (<-chan *Message, error) {
 // Get channel for fatal errors
 func (s *Service) GetErrors() chan error {
 	return s.adapter.GetErrors()
-}
-
-func getCurrentItem(chain []*ChainItem) (int, *ChainItem) {
-	for i, item := range chain {
-		if item.Successful != true {
-			return i, item
-		}
-	}
-
-	return -1, nil
 }
