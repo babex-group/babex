@@ -54,6 +54,12 @@ func (s Service) Next(msg *Message, data interface{}, meta map[string]string) er
 
 	nextElement := chain[nextIndex]
 
+	if nextElement.Meta != nil {
+		for key, metaItem := range nextElement.Meta {
+			meta[key] = metaItem
+		}
+	}
+
 	if nextElement.IsMultiple {
 		val := reflect.ValueOf(data)
 
