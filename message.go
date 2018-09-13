@@ -36,4 +36,5 @@ type InitialMessage struct {
 	Config json.RawMessage   `json:"config"`
 	Meta   map[string]string `json:"meta"`
 	Catch  Chain             `json:"catch"`
+	When   When              `json:"when"`
 }
