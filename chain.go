@@ -1,10 +1,11 @@
 package babex
 
 type ChainItem struct {
-	Successful bool   `json:"successful"`
-	Exchange   string `json:"exchange"`
-	Key        string `json:"key"`
-	IsMultiple bool   `json:"isMultiple"`
+	Successful bool              `json:"successful"`
+	Exchange   string            `json:"exchange"`
+	Key        string            `json:"key"`
+	IsMultiple bool              `json:"isMultiple"`
+	Meta       map[string]string `json:"meta"` // Meta for particular item
 }
 
 type Chain []ChainItem

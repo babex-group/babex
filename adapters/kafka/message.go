@@ -16,24 +16,26 @@ func NewMessage(consumer *cluster.Consumer, msg *sarama.ConsumerMessage) (*babex
 	}
 
 	message := babex.Message{
-		Exchange:   msg.Topic,
-		Key:        string(msg.Key),
-		Chain:      initialMessage.Chain,
-		Data:       initialMessage.Data,
-		Config:     initialMessage.Config,
-		RawMessage: KafkaMessage{msg: msg, consumer: consumer},
+		Exchange:       msg.Topic,
+		Key:            string(msg.Key),
+		Chain:          initialMessage.Chain,
+		Data:           initialMessage.Data,
+		Config:         initialMessage.Config,
+		Meta:           initialMessage.Meta,
+		RawMessage:     KafkaMessage{Msg: msg, consumer: consumer},
+		InitialMessage: &initialMessage,
 	}
 
 	return &message, nil
 }
 
 type KafkaMessage struct {
-	msg      *sarama.ConsumerMessage
+	Msg      *sarama.ConsumerMessage
 	consumer *cluster.Consumer
 }
 
 func (m KafkaMessage) Ack(multiple bool) error {
-	m.consumer.MarkOffset(m.msg, "")
+	m.consumer.MarkOffset(m.Msg, "")
 	return nil
 }
 

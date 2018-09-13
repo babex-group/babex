@@ -16,14 +16,18 @@ type Message struct {
 	Data     json.RawMessage
 	Headers  map[string]interface{}
 	Config   []byte
+	Meta     map[string]string
 
-	RawMessage RawMessage
+	InitialMessage *InitialMessage
+	RawMessage     RawMessage
 }
 
 type InitialMessage struct {
-	Chain  Chain           `json:"chain"`
-	Data   json.RawMessage `json:"data"`
-	Config json.RawMessage `json:"config"`
+	Chain  Chain             `json:"chain"`
+	Data   json.RawMessage   `json:"data"`
+	Config json.RawMessage   `json:"config"`
+	Meta   map[string]string `json:"meta"`
+	Catch  Chain             `json:"catch"`
 }
 
 func (m Message) Ack(multiple bool) error {

@@ -26,19 +26,34 @@ func NewService(adapter Adapter) *Service {
 	return &service
 }
 
-func (s *Service) PublishMessage(exchange string, key string, chain []ChainItem, data interface{}, headers map[string]interface{}, config json.RawMessage) error {
-	return s.adapter.PublishMessage(exchange, key, chain, data, headers, config)
+func (s *Service) PublishMessage(exchange string, key string, chain []ChainItem, data interface{}, meta map[string]string, config json.RawMessage) error {
+	return s.adapter.PublishMessage(exchange, key, chain, data, meta, config)
+}
+
+func (s *Service) Catch(msg *Message, err error) error {
+	if len(msg.InitialMessage.Catch) == 0 {
+		return nil
+	}
+
+	return s.adapter.PublishMessage(
+		msg.InitialMessage.Catch[0].Exchange,
+		msg.InitialMessage.Catch[0].Key,
+		msg.InitialMessage.Catch,
+		CatchData{Error: err, Exchange: msg.Exchange, Key: msg.Key},
+		nil,
+		msg.Config,
+	)
 }
 
 // Publish the message to next elements of chain
-func (s Service) Next(msg *Message, data interface{}, headers map[string]interface{}) error {
+func (s Service) Next(msg *Message, data interface{}, meta map[string]string) error {
 	err := msg.RawMessage.Ack(true)
 	if err != nil {
 		return err
 	}
 
-	if headers == nil {
-		headers = msg.Headers
+	if meta == nil {
+		meta = msg.Meta
 	}
 
 	if msg.Chain == nil {
@@ -53,6 +68,12 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 	}
 
 	nextElement := chain[nextIndex]
+
+	if nextElement.Meta != nil {
+		for key, metaItem := range nextElement.Meta {
+			meta[key] = metaItem
+		}
+	}
 
 	if nextElement.IsMultiple {
 		val := reflect.ValueOf(data)
@@ -69,7 +90,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 				nextElement.Key,
 				chain,
 				item,
-				headers,
+				meta,
 				msg.Config,
 			)
 			if err != nil {
@@ -82,7 +103,7 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 			nextElement.Key,
 			chain,
 			data,
-			headers,
+			meta,
 			msg.Config,
 		)
 		if err != nil {
@@ -101,14 +122,4 @@ func (s *Service) GetMessages() (<-chan *Message, error) {
 // Get channel for fatal errors
 func (s *Service) GetErrors() chan error {
 	return s.adapter.GetErrors()
-}
-
-func getCurrentItem(chain []*ChainItem) (int, *ChainItem) {
-	for i, item := range chain {
-		if item.Successful != true {
-			return i, item
-		}
-	}
-
-	return -1, nil
 }
