@@ -48,6 +48,7 @@ func (s *Service) Catch(msg *Message, err error) error {
 		Config: msg.Config,
 		Chain:  msg.InitialMessage.Chain,
 		Data:   b,
+		Meta:   msg.InitialMessage.Meta,
 	}
 
 	return s.adapter.Publish(
