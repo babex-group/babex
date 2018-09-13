@@ -119,7 +119,7 @@ func (s *Service) GetMessages() (<-chan *Message, error) {
 	return s.adapter.GetMessages()
 }
 
-// Get channel for fatal errors
+// Get channel for errors
 func (s *Service) GetErrors() chan error {
 	return s.adapter.GetErrors()
 }

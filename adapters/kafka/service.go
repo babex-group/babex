@@ -70,6 +70,7 @@ func NewAdapter(options Options) (*Adapter, error) {
 
 				m, err := NewMessage(adapter.Consumer, msg)
 				if err != nil {
+					adapter.err <- err
 					adapter.Consumer.MarkOffset(msg, "")
 					continue
 				}
