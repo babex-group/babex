@@ -39,7 +39,7 @@ func (s *Service) Catch(msg *Message, err error) error {
 		return nil
 	}
 
-	b, err := json.Marshal(CatchData{Error: err, Exchange: msg.Exchange, Key: msg.Key})
+	b, err := json.Marshal(CatchData{Error: err.Error(), Exchange: msg.Exchange, Key: msg.Key})
 	if err != nil {
 		return err
 	}
