@@ -117,3 +117,17 @@ func (a *Adapter) PublishMessage(exchange string, key string, chain []babex.Chai
 
 	return err
 }
+
+func (a *Adapter) Publish(exchange string, key string, message babex.InitialMessage) error {
+	b, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = a.Producer.SendMessage(&sarama.ProducerMessage{
+		Topic: exchange,
+		Value: sarama.ByteEncoder(b),
+	})
+
+	return err
+}

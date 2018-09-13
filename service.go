@@ -26,6 +26,10 @@ func NewService(adapter Adapter) *Service {
 	return &service
 }
 
+func (s *Service) Publish(exchange string, key string, message InitialMessage) error {
+	return s.adapter.Publish(exchange, key, message)
+}
+
 func (s *Service) PublishMessage(exchange string, key string, chain []ChainItem, data interface{}, meta map[string]string, config json.RawMessage) error {
 	return s.adapter.PublishMessage(exchange, key, chain, data, meta, config)
 }
@@ -35,13 +39,21 @@ func (s *Service) Catch(msg *Message, err error) error {
 		return nil
 	}
 
-	return s.adapter.PublishMessage(
+	b, err := json.Marshal(CatchData{Error: err, Exchange: msg.Exchange, Key: msg.Key})
+	if err != nil {
+		return err
+	}
+
+	m := InitialMessage{
+		Config: msg.Config,
+		Chain:  msg.InitialMessage.Chain,
+		Data:   b,
+	}
+
+	return s.adapter.Publish(
 		msg.InitialMessage.Catch[0].Exchange,
 		msg.InitialMessage.Catch[0].Key,
-		msg.InitialMessage.Catch,
-		CatchData{Error: err, Exchange: msg.Exchange, Key: msg.Key},
-		nil,
-		msg.Config,
+		m,
 	)
 }
 
@@ -85,28 +97,42 @@ func (s Service) Next(msg *Message, data interface{}, meta map[string]string) er
 		for i := 0; i < val.Len(); i++ {
 			item := val.Index(i).Interface()
 
-			err := s.adapter.PublishMessage(
-				nextElement.Exchange,
-				nextElement.Key,
-				chain,
-				item,
-				meta,
-				msg.Config,
-			)
+			b, err := json.Marshal(item)
 			if err != nil {
+				return err
+			}
+
+			m := InitialMessage{
+				Catch:  msg.InitialMessage.Catch,
+				Config: msg.Config,
+				Meta:   meta,
+				Chain:  chain,
+				Data:   b,
+			}
+
+			if err := s.adapter.Publish(nextElement.Exchange, nextElement.Key, m); err != nil {
 				return err
 			}
 		}
 	} else {
-		err := s.adapter.PublishMessage(
+		b, err := json.Marshal(data)
+		if err != nil {
+			return err
+		}
+
+		m := InitialMessage{
+			Catch:  msg.InitialMessage.Catch,
+			Config: msg.Config,
+			Meta:   meta,
+			Chain:  chain,
+			Data:   b,
+		}
+
+		if err := s.adapter.Publish(
 			nextElement.Exchange,
 			nextElement.Key,
-			chain,
-			data,
-			meta,
-			msg.Config,
-		)
-		if err != nil {
+			m,
+		); err != nil {
 			return err
 		}
 	}

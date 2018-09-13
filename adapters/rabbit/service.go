@@ -140,6 +140,23 @@ func (a *Adapter) PublishMessage(exchange string, key string, chain []babex.Chai
 	)
 }
 
+func (a *Adapter) Publish(exchange string, key string, message babex.InitialMessage) error {
+	b, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	return a.Channel.Publish(
+		exchange,
+		key,
+		false,
+		false,
+		amqp.Publishing{
+			Body: b,
+		},
+	)
+}
+
 func (a *Adapter) BindToExchange(exchange string, key string) error {
 	if a.Queue == nil {
 		return ErrorQueueIsNotInitialize
