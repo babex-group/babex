@@ -53,6 +53,8 @@ func (s *Service) Publish(message InitialMessage) error {
 //		service.Catch(msg, err)
 // }
 func (s *Service) Catch(msg *Message, err error) error {
+	defer msg.Ack(false)
+
 	if len(msg.InitialMessage.Catch) == 0 {
 		return nil
 	}
