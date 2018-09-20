@@ -35,6 +35,11 @@ func (s *Service) Publish(message InitialMessage) error {
 
 	nextElement := message.Chain[nextIndex]
 
+	meta := Meta{}
+	meta.Merge(message.Meta, nextElement.Meta)
+
+	message.Meta = meta
+
 	return s.adapter.Publish(nextElement.Exchange, nextElement.Key, message)
 }
 
@@ -102,7 +107,7 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 	nextElement := chain[nextIndex]
 
 	meta := Meta{}
-	meta.Merge(msg.Meta, nextElement.Meta, useMeta)
+	meta.Merge(msg.Meta, useMeta)
 
 	var items []interface{}
 
