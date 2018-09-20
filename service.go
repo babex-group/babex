@@ -55,16 +55,38 @@ func (s *Service) Publish(message InitialMessage) error {
 //
 // if err != nil {
 // 		msg.Ack()
-//		service.Catch(msg, err)
+//		service.Catch(msg, err, nil)
 // }
-func (s *Service) Catch(msg *Message, err error) error {
+//
+// You can use body argument for pass the custom data, otherwise the data will have msg.Data
+//
+// How you can handle catch data?
+// For example:
+//
+// var catch babex.CatchData
+//
+// if err := json.Unmarshal(msg.Data, &catch); err != nil {}
+//
+// fmt.Println(catch.Error)
+func (s *Service) Catch(msg *Message, err error, body []byte) error {
 	defer msg.Ack(false)
 
 	if len(msg.InitialMessage.Catch) == 0 {
 		return nil
 	}
 
-	b, err := json.Marshal(CatchData{Error: err.Error(), Exchange: msg.Exchange, Key: msg.Key})
+	if body == nil {
+		body = msg.Data
+	}
+
+	catch := CatchData{
+		Error: err.Error(),
+		Exchange: msg.Exchange,
+		Key: msg.Key,
+		Data: body,
+	}
+
+	b, err := json.Marshal(catch)
 	if err != nil {
 		return err
 	}
