@@ -45,29 +45,28 @@ func (s *Service) Publish(message InitialMessage) error {
 
 // The catch method allows publish error to Catch chain.
 // For example:
-// {
-//    "chain": [...],
-//	  "catch": [{
-// 		"exchange": "error-topic"
-// 	  }]
-// }
+//  {
+//     "chain": [],
+//     "catch": [{
+//       "exchange": "error-topic"
+//     }]
+//  }
 // If you have an exception you can publish error to the catch chain:
 //
-// if err != nil {
-// 		msg.Ack()
-//		service.Catch(msg, err, nil)
-// }
+//  if err != nil {
+//       msg.Ack()
+//       service.Catch(msg, err, nil)
+//  }
 //
 // You can use body argument for pass the custom data, otherwise the data will have msg.Data
-//
 // How you can handle catch data?
 // For example:
 //
-// var catch babex.CatchData
+//  var catch babex.CatchData
 //
-// if err := json.Unmarshal(msg.Data, &catch); err != nil {}
+//  if err := json.Unmarshal(msg.Data, &catch); err != nil {}
 //
-// fmt.Println(catch.Error)
+//  fmt.Println(catch.Error)
 func (s *Service) Catch(msg *Message, err error, body []byte) error {
 	defer msg.Ack(false)
 
