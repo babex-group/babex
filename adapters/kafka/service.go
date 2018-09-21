@@ -6,6 +6,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/bsm/sarama-cluster"
 	"github.com/matroskin13/babex"
+	"fmt"
 )
 
 type Adapter struct {
@@ -75,8 +76,10 @@ func NewAdapter(options Options) (*Adapter, error) {
 				}
 
 				adapter.ch <- m
-			case err := <-adapter.Consumer.Errors():
-				adapter.err <- err
+			case err, ok := <-adapter.Consumer.Errors():
+				if ok {
+					adapter.err <- fmt.Errorf("kafka consumer error: %s", err)
+				}
 			}
 		}
 
