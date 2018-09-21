@@ -3,10 +3,10 @@ package kafka
 import (
 	"encoding/json"
 
+	"fmt"
 	"github.com/Shopify/sarama"
 	"github.com/bsm/sarama-cluster"
 	"github.com/matroskin13/babex"
-	"fmt"
 )
 
 type Adapter struct {
@@ -134,4 +134,8 @@ func (a *Adapter) Publish(exchange string, key string, message babex.InitialMess
 	})
 
 	return err
+}
+
+func (a *Adapter) Close() error {
+	return a.Consumer.Close()
 }

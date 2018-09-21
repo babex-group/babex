@@ -79,10 +79,10 @@ func (s *Service) Catch(msg *Message, err error, body []byte) error {
 	}
 
 	catch := CatchData{
-		Error: err.Error(),
+		Error:    err.Error(),
 		Exchange: msg.Exchange,
-		Key: msg.Key,
-		Data: body,
+		Key:      msg.Key,
+		Data:     body,
 	}
 
 	b, err := json.Marshal(catch)
@@ -176,4 +176,8 @@ func (s *Service) GetMessages() (<-chan *Message, error) {
 // Get channel for errors
 func (s *Service) GetErrors() chan error {
 	return s.adapter.GetErrors()
+}
+
+func (s *Service) Close() error {
+	return s.adapter.Close()
 }

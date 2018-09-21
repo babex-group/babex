@@ -170,3 +170,7 @@ func (a *Adapter) BindToExchange(exchange string, key string) error {
 		nil,
 	)
 }
+
+func (a *Adapter) Close() error {
+	return a.Channel.Close()
+}
