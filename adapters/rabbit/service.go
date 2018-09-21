@@ -102,7 +102,7 @@ func (a Adapter) GetMessages() (<-chan *babex.Message, error) {
 			a.ch <- m
 		}
 
-		a.err <- babex.ErrorCloseConsumer
+		close(a.ch)
 	}()
 
 	return a.ch, nil

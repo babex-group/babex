@@ -64,7 +64,6 @@ func NewAdapter(options Options) (*Adapter, error) {
 			select {
 			case msg, ok := <-adapter.Consumer.Messages():
 				if !ok {
-					adapter.err <- babex.ErrorCloseConsumer
 					break MainLoop
 				}
 
@@ -80,6 +79,8 @@ func NewAdapter(options Options) (*Adapter, error) {
 				adapter.err <- err
 			}
 		}
+
+		close(adapter.ch)
 	}()
 
 	return &adapter, nil
