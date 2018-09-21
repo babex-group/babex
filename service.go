@@ -92,7 +92,7 @@ func (s *Service) Catch(msg *Message, err error, body []byte) error {
 
 	m := InitialMessage{
 		Config: msg.Config,
-		Chain:  msg.InitialMessage.Chain,
+		Chain:  msg.InitialMessage.Catch,
 		Data:   b,
 		Meta:   msg.InitialMessage.Meta,
 	}
