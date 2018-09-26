@@ -68,7 +68,7 @@ func (s *Service) Publish(message InitialMessage) error {
 //  if err := json.Unmarshal(msg.Data, &catch); err != nil {}
 //
 //  fmt.Println(catch.Error)
-func (s *Service) Catch(msg *Message, err error, body []byte) error {
+func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
 	defer msg.Ack(false)
 
 	_, nextElement, err := s.chainCursor(msg)
@@ -77,7 +77,7 @@ func (s *Service) Catch(msg *Message, err error, body []byte) error {
 	}
 
 	chain := msg.InitialMessage.Catch
-	if len(nextElement.Catch) == 0 {
+	if len(nextElement.Catch) != 0 {
 		chain = nextElement.Catch
 	}
 	if len(chain) == 0 {
@@ -89,7 +89,7 @@ func (s *Service) Catch(msg *Message, err error, body []byte) error {
 	}
 
 	catch := CatchData{
-		Error:    err.Error(),
+		Error:    catchErr.Error(),
 		Exchange: msg.Exchange,
 		Key:      msg.Key,
 		Data:     body,
@@ -100,7 +100,7 @@ func (s *Service) Catch(msg *Message, err error, body []byte) error {
 		return err
 	}
 
-	return s.newChainProcess(msg, b, msg.InitialMessage.Catch)
+	return s.newChainProcess(msg, b, chain)
 }
 
 // Count starts set count chain. Initial data for chain is object with key `all` containing total count of elements
