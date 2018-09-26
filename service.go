@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrorNextIsNotDefined = errors.New("next is not defined")
+	ErrorNextNoCount      = errors.New("next does not contain count chain")
 	ErrorDataIsNotArray   = errors.New("data is not array. next item of chain has isMultiple flag")
 	ErrorChainIsEmpty     = errors.New("chain is empty")
 	ErrorCloseConsumer    = errors.New("close consumer")
@@ -70,8 +71,17 @@ func (s *Service) Publish(message InitialMessage) error {
 func (s *Service) Catch(msg *Message, err error, body []byte) error {
 	defer msg.Ack(false)
 
-	if len(msg.InitialMessage.Catch) == 0 {
-		return nil
+	_, nextElement, err := s.chainCursor(msg)
+	if err != nil {
+		return err
+	}
+
+	chain := msg.InitialMessage.Catch
+	if len(nextElement.Catch) == 0 {
+		chain = nextElement.Catch
+	}
+	if len(chain) == 0 {
+		return ErrorNextNoCount
 	}
 
 	if body == nil {
@@ -90,17 +100,56 @@ func (s *Service) Catch(msg *Message, err error, body []byte) error {
 		return err
 	}
 
+	return s.newChainProcess(msg, b, msg.InitialMessage.Catch)
+}
+
+// Count starts set count chain. Initial data for chain is object with key `all` containing total count of elements
+func (s *Service) Count(msg *Message, count int) error {
+	_, nextElement, err := s.chainCursor(msg)
+	if err != nil {
+		return err
+	}
+	if len(nextElement.SetCount) == 0 {
+		return ErrorNextNoCount
+	}
+
+	data := struct {
+		All int `json:"all"`
+	}{
+		All: count,
+	}
+
+	b, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	return s.newChainProcess(msg, b, nextElement.SetCount)
+}
+
+func (s *Service) newChainProcess(msg *Message, data json.RawMessage, chain Chain) error {
 	m := InitialMessage{
 		Config: msg.Config,
-		Chain:  msg.InitialMessage.Catch,
-		Data:   b,
+		Chain:  chain,
+		Data:   data,
 		Meta:   msg.InitialMessage.Meta,
 	}
 
 	return s.Publish(m)
 }
 
-// Publish the message to next elements of chain
+func (s *Service) chainCursor(msg *Message) (Chain, ChainItem, error) {
+	chain := SetCurrentItemSuccess(msg.Chain)
+	nextIndex := getCurrentChainIndex(chain)
+	if nextIndex == -1 {
+		return nil, ChainItem{}, ErrorNextIsNotDefined
+	}
+
+	nextElement := chain[nextIndex]
+	return chain, nextElement, nil
+}
+
+// Next publishes the message to next elements of chain
 //
 // The data argument is any GO type.
 // If current element of chain has multiple flag, you can put the slice.
@@ -118,19 +167,17 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 		return ErrorChainIsEmpty
 	}
 
-	chain := SetCurrentItemSuccess(msg.Chain)
-
-	nextIndex := getCurrentChainIndex(chain)
-	if nextIndex == -1 {
-		return ErrorNextIsNotDefined
+	chain, nextElement, err := s.chainCursor(msg)
+	if err != nil {
+		return err
 	}
-
-	nextElement := chain[nextIndex]
 
 	meta := Meta{}
 	meta.Merge(msg.Meta, useMeta)
 
 	var items []interface{}
+
+	count := 1
 
 	if nextElement.IsMultiple {
 		val := reflect.ValueOf(data)
@@ -142,6 +189,8 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 		for i := 0; i < val.Len(); i++ {
 			items = append(items, val.Index(i).Interface())
 		}
+
+		count = val.Len()
 	} else {
 		items = append(items, data)
 	}
@@ -161,6 +210,12 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 		}
 
 		if err := s.Publish(m); err != nil {
+			return err
+		}
+	}
+
+	if nextElement.SetCount != nil {
+		if err := s.Count(msg, count); err != nil {
 			return err
 		}
 	}
