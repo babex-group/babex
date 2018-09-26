@@ -5,18 +5,21 @@ import (
 
 	"github.com/matroskin13/babex"
 	"encoding/json"
+	"github.com/matroskin13/babex/adapters/rabbit"
 )
 
 func main() {
-	service, err := babex.NewService(&babex.ServiceConfig{
-		Address:  "amqp://guest:guest@localhost:5672/",
-		Name:     "numbers",
+	adapter, err := rabbit.NewAdapter(rabbit.Options{
+		Address: "amqp://guest:guest@localhost:5672/",
+		Name:    "inc-service",
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = service.BindToExchange("example", "get-numbers")
+	service := babex.NewService(adapter)
+
+	err = adapter.BindToExchange("example", "get-numbers")
 	if err != nil {
 		log.Fatal(err)
 	}

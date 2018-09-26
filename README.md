@@ -2,7 +2,7 @@
 
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/matroskin13/babex)
 
-Babex allows you to make a chain of microservices on the fly with the help of RabbitMQ.
+Babex allows you to make a chain of microservices on the fly with the help of RabbitMQ, Kafka.
 
 ## Usage
 
@@ -18,18 +18,21 @@ import (
     "log"
 
     "github.com/matroskin13/babex"
+    "github.com/matroskin13/babex/adapters/rabbit"
 )
 
 func main() {
-    service, err := babex.NewService(&babex.ServiceConfig{
-        Address:  "amqp://guest:guest@localhost:5672/", // rabbit addr
-        Name:     "inc-service", // name of service (name of queue)
+    adapter, err := rabbit.NewAdapter(rabbit.Options{
+        Address: "amqp://guest:guest@localhost:5672/",
+        Name:    "inc-service",
     })
     if err != nil {
         log.Fatal(err)
     }
 
-    err = service.BindToExchange("example", "inc")
+    service := babex.NewService(adapter)
+
+    err = adapter.BindToExchange("example", "inc")
     if err != nil {
         log.Fatal(err)
     }
@@ -134,6 +137,10 @@ Check logs:
 $ 2018/06/13 13:51:35 count = 2, incStep = 2
 $ 2018/06/13 13:51:35 count = 4, incStep = 2
 ```
+
+## Adapters
+
+Babex has support adapters for Kafka and RabbitMQ.
 
 ## Other languages
 

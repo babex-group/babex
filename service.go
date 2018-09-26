@@ -1,151 +1,136 @@
 package babex
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"reflect"
-
-	"github.com/streadway/amqp"
 )
 
 var (
-	ErrorNextIsNotDefined     = errors.New("next is not defined")
-	ErrorDataIsNotArray       = errors.New("data is not array. next item of chain has isMultiple flag")
-	ErrorChainIsEmpty         = errors.New("chain is empty")
-	ErrorQueueIsNotInitialize = errors.New("queue is not initialized")
-	ErrorCloseConsumer        = errors.New("close consumer")
+	ErrorNextIsNotDefined = errors.New("next is not defined")
+	ErrorDataIsNotArray   = errors.New("data is not array. next item of chain has isMultiple flag")
+	ErrorChainIsEmpty     = errors.New("chain is empty")
+	ErrorCloseConsumer    = errors.New("close consumer")
 )
 
-type ServiceConfig struct {
-	Name             string // name of your service, and for declare queue
-	Address          string // addr for rabbit, example amqp://guest:guest@localhost:5672
-	IsSingle         bool   // if true, service create uniq queue (example - test.adska1231k)
-	SkipDeclareQueue bool
-	AutoAck          bool
-}
-
 type Service struct {
-	Channel *amqp.Channel
-	Queue   *amqp.Queue
-
-	ch     chan *Message
-	err    chan error
-	config *ServiceConfig
+	adapter Adapter
 }
 
-// Create Babex service
-func NewService(config *ServiceConfig) (*Service, error) {
-	qName := config.Name
-
-	if config.IsSingle {
-		hash := md5.New()
-		hash.Write([]byte(qName))
-
-		qName = config.Name + "." + hex.EncodeToString(hash.Sum(nil))
-	}
-
-	conn, err := amqp.Dial(config.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := conn.Channel()
-	if err != nil {
-		return nil, err
-	}
-
+// Create Babex service via the adapter interface
+func NewService(adapter Adapter) *Service {
 	service := Service{
-		Channel: ch,
-		ch:      make(chan *Message),
-		err:     make(chan error),
-		config:  config,
+		adapter: adapter,
 	}
 
-	if config.SkipDeclareQueue == false {
-		q, err := ch.QueueDeclare(
-			qName,
-			false,
-			false,
-			false,
-			false,
-			nil,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		service.Queue = &q
-	}
-
-	return &service, nil
+	return &service
 }
 
-func (s *Service) BindToExchange(exchange string, key string) error {
-	if s.Queue == nil {
-		return ErrorQueueIsNotInitialize
+// Publish message
+func (s *Service) Publish(message InitialMessage) error {
+	nextIndex := getCurrentChainIndex(message.Chain)
+	if nextIndex == -1 {
+		return ErrorNextIsNotDefined
 	}
 
-	return s.Channel.QueueBind(
-		s.Queue.Name,
-		key,
-		exchange,
-		false,
-		nil,
-	)
+	nextElement := message.Chain[nextIndex]
+
+	meta := Meta{}
+	meta.Merge(message.Meta, nextElement.Meta)
+
+	message.Meta = meta
+
+	return s.adapter.Publish(nextElement.Exchange, nextElement.Key, message)
 }
 
-func (s *Service) PublishMessage(exchange string, key string, chain []*ChainItem, data interface{}, headers map[string]interface{}, config json.RawMessage) error {
-	bData, err := json.Marshal(data)
+// The catch method allows publish error to Catch chain.
+// For example:
+//  {
+//     "chain": [],
+//     "catch": [{
+//       "exchange": "error-topic"
+//     }]
+//  }
+// If you have an exception you can publish error to the catch chain:
+//
+//  if err != nil {
+//       msg.Ack()
+//       service.Catch(msg, err, nil)
+//  }
+//
+// You can use body argument for pass the custom data, otherwise the data will have msg.Data
+// How you can handle catch data?
+// For example:
+//
+//  var catch babex.CatchData
+//
+//  if err := json.Unmarshal(msg.Data, &catch); err != nil {}
+//
+//  fmt.Println(catch.Error)
+func (s *Service) Catch(msg *Message, err error, body []byte) error {
+	defer msg.Ack(false)
+
+	if len(msg.InitialMessage.Catch) == 0 {
+		return nil
+	}
+
+	if body == nil {
+		body = msg.Data
+	}
+
+	catch := CatchData{
+		Error:    err.Error(),
+		Exchange: msg.Exchange,
+		Key:      msg.Key,
+		Data:     body,
+	}
+
+	b, err := json.Marshal(catch)
 	if err != nil {
 		return err
 	}
 
-	b, err := json.Marshal(InitialMessage{
-		Data:   bData,
-		Chain:  chain,
-		Config: config,
-	})
-	if err != nil {
-		return err
+	m := InitialMessage{
+		Config: msg.Config,
+		Chain:  msg.InitialMessage.Catch,
+		Data:   b,
+		Meta:   msg.InitialMessage.Meta,
 	}
 
-	return s.Channel.Publish(
-		exchange,
-		key,
-		false,
-		false,
-		amqp.Publishing{
-			Body:    b,
-			Headers: headers,
-		},
-	)
+	return s.Publish(m)
 }
 
-func (s Service) Next(msg *Message, data interface{}, headers map[string]interface{}) error {
-	err := msg.Ack(false)
+// Publish the message to next elements of chain
+//
+// The data argument is any GO type.
+// If current element of chain has multiple flag, you can put the slice.
+//
+// Every message of chain has meta property (map[string]string]).
+// You can use it instead amqp headers.
+// If you put the useMeta argument, the babex merges the current meta with useMeta.
+func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string) error {
+	err := msg.RawMessage.Ack(true)
 	if err != nil {
 		return err
-	}
-
-	if headers == nil {
-		headers = msg.Headers
 	}
 
 	if msg.Chain == nil {
 		return ErrorChainIsEmpty
 	}
 
-	currIndex, currElement := getCurrentItem(msg.Chain)
+	chain := SetCurrentItemSuccess(msg.Chain)
 
-	currElement.Successful = true
-
-	if len(msg.Chain) <= currIndex+1 {
+	nextIndex := getCurrentChainIndex(chain)
+	if nextIndex == -1 {
 		return ErrorNextIsNotDefined
 	}
 
-	nextElement := msg.Chain[currIndex+1]
+	nextElement := chain[nextIndex]
+
+	meta := Meta{}
+	meta.Merge(msg.Meta, useMeta)
+
+	var items []interface{}
 
 	if nextElement.IsMultiple {
 		val := reflect.ValueOf(data)
@@ -155,30 +140,27 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 		}
 
 		for i := 0; i < val.Len(); i++ {
-			item := val.Index(i).Interface()
-
-			err = s.PublishMessage(
-				nextElement.Exchange,
-				nextElement.Key,
-				msg.Chain,
-				item,
-				headers,
-				msg.Config,
-			)
-			if err != nil {
-				return err
-			}
+			items = append(items, val.Index(i).Interface())
 		}
 	} else {
-		err = s.PublishMessage(
-			nextElement.Exchange,
-			nextElement.Key,
-			msg.Chain,
-			data,
-			headers,
-			msg.Config,
-		)
+		items = append(items, data)
+	}
+
+	for _, item := range items {
+		b, err := json.Marshal(item)
 		if err != nil {
+			return err
+		}
+
+		m := InitialMessage{
+			Catch:  msg.InitialMessage.Catch,
+			Config: msg.Config,
+			Meta:   meta,
+			Chain:  chain,
+			Data:   b,
+		}
+
+		if err := s.Publish(m); err != nil {
 			return err
 		}
 	}
@@ -188,47 +170,14 @@ func (s Service) Next(msg *Message, data interface{}, headers map[string]interfa
 
 // Get channel for receive messages
 func (s *Service) GetMessages() (<-chan *Message, error) {
-	msgs, err := s.Channel.Consume(
-		s.Queue.Name,
-		"",
-		s.config.AutoAck,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	go func() {
-		for msg := range msgs {
-			m, err := NewMessage(msg)
-			if err != nil {
-				msg.Ack(false)
-				continue
-			}
-
-			s.ch <- m
-		}
-
-		s.err <- ErrorCloseConsumer
-	}()
-
-	return s.ch, nil
+	return s.adapter.GetMessages()
 }
 
-// Get channel for fatal errors
+// Get channel for errors
 func (s *Service) GetErrors() chan error {
-	return s.err
+	return s.adapter.GetErrors()
 }
 
-func getCurrentItem(chain []*ChainItem) (int, *ChainItem) {
-	for i, item := range chain {
-		if item.Successful != true {
-			return i, item
-		}
-	}
-
-	return -1, nil
+func (s *Service) Close() error {
+	return s.adapter.Close()
 }

@@ -2,57 +2,38 @@ package babex
 
 import (
 	"encoding/json"
-
-	"github.com/streadway/amqp"
 )
 
+type RawMessage interface {
+	Ack(multiple bool) error
+	Nack(multiple bool) error
+}
+
 type Message struct {
-	Key     string
-	Chain   []*ChainItem
-	Data    json.RawMessage
-	Headers map[string]interface{}
-	Config  []byte
+	Exchange string
+	Key      string
+	Chain    Chain
+	Data     json.RawMessage
+	Headers  map[string]interface{}
+	Config   []byte
+	Meta     map[string]string
 
-	msg amqp.Delivery
-}
-
-type InitialMessage struct {
-	Chain  []*ChainItem    `json:"chain"`
-	Data   json.RawMessage `json:"data"`
-	Config json.RawMessage `json:"config"`
-}
-
-func NewMessage(msg amqp.Delivery) (*Message, error) {
-	var initialMessage InitialMessage
-
-	if err := json.Unmarshal(msg.Body, &initialMessage); err != nil {
-		return nil, err
-	}
-
-	message := Message{
-		Key:     msg.RoutingKey,
-		Chain:   initialMessage.Chain,
-		Data:    initialMessage.Data,
-		msg:     msg,
-		Headers: msg.Headers,
-		Config:  initialMessage.Config,
-	}
-
-	return &message, nil
+	InitialMessage *InitialMessage
+	RawMessage     RawMessage
 }
 
 func (m Message) Ack(multiple bool) error {
-	return m.msg.Ack(multiple)
+	return m.RawMessage.Ack(multiple)
 }
 
 func (m Message) Nack(multiple bool) error {
-	return m.msg.Nack(multiple, true)
+	return m.RawMessage.Nack(multiple)
 }
 
-func (m *Message) SetChain(chain []ChainItem) error {
-	return nil
-}
-
-func (m *Message) SetConfig(config []byte) {
-	m.Config = json.RawMessage(config)
+type InitialMessage struct {
+	Chain  Chain             `json:"chain"`
+	Data   json.RawMessage   `json:"data"`
+	Config json.RawMessage   `json:"config"`
+	Meta   map[string]string `json:"meta"`
+	Catch  Chain             `json:"catch"`
 }
