@@ -179,8 +179,6 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 
 	var items []interface{}
 
-	count := 1
-
 	if nextElement.IsMultiple {
 		val := reflect.ValueOf(data)
 
@@ -192,7 +190,11 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 			items = append(items, val.Index(i).Interface())
 		}
 
-		count = val.Len()
+		if nextElement.SetCount != nil {
+			if err := s.Count(msg, val.Len()); err != nil {
+				return err
+			}
+		}
 	} else {
 		items = append(items, data)
 	}
@@ -212,12 +214,6 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 		}
 
 		if err := s.Publish(m); err != nil {
-			return err
-		}
-	}
-
-	if nextElement.IsMultiple && nextElement.SetCount != nil {
-		if err := s.Count(msg, count); err != nil {
 			return err
 		}
 	}
