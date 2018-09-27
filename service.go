@@ -44,7 +44,7 @@ func (s *Service) Publish(message InitialMessage) error {
 	return s.adapter.Publish(nextElement.Exchange, nextElement.Key, message)
 }
 
-// The catch method allows publish error to Catch chain.
+// Catch method allows publish error to Catch chain.
 // For example:
 //  {
 //     "chain": [],
@@ -101,7 +101,14 @@ func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
 		return err
 	}
 
-	return s.newChainProcess(msg, b, chain)
+	m := InitialMessage{
+		Config: msg.Config,
+		Chain:  chain,
+		Data:   b,
+		Meta:   msg.InitialMessage.Meta,
+	}
+
+	return s.Publish(m)
 }
 
 // Count starts set count chain. Initial data for chain is object with key `all` containing total count of elements
@@ -125,14 +132,10 @@ func (s *Service) Count(msg *Message, count int) error {
 		return err
 	}
 
-	return s.newChainProcess(msg, b, nextElement.SetCount)
-}
-
-func (s *Service) newChainProcess(msg *Message, data json.RawMessage, chain Chain) error {
 	m := InitialMessage{
 		Config: msg.Config,
-		Chain:  chain,
-		Data:   data,
+		Chain:  nextElement.SetCount,
+		Data:   b,
 		Meta:   msg.InitialMessage.Meta,
 	}
 
@@ -215,7 +218,7 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 		}
 	}
 
-	if nextElement.SetCount != nil {
+	if nextElement.IsMultiple && nextElement.SetCount != nil {
 		if err := s.Count(msg, count); err != nil {
 			return err
 		}
