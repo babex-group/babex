@@ -71,14 +71,15 @@ func (s *Service) Publish(message InitialMessage) error {
 func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
 	defer msg.Ack(false)
 
-	_, nextElement, err := s.chainCursor(msg)
-	if err != nil {
-		return err
+	currentIndex := getCurrentChainIndex(msg.Chain)
+	if currentIndex == -1 {
+		return ErrorNextIsNotDefined
 	}
+	currentElement := msg.Chain[currentIndex]
 
 	chain := msg.InitialMessage.Catch
-	if len(nextElement.Catch) != 0 {
-		chain = nextElement.Catch
+	if len(currentElement.Catch) != 0 {
+		chain = currentElement.Catch
 	}
 	if len(chain) == 0 {
 		return ErrorNextNoCount
