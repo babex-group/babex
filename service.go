@@ -121,9 +121,7 @@ func (s *Service) Count(msg *Message, count int) error {
 		return ErrorNextNoCount
 	}
 
-	data := struct {
-		All int `json:"all"`
-	}{
+	data := DataAll{
 		All: count,
 	}
 
