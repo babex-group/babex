@@ -5,6 +5,8 @@ type ChainItem struct {
 	Exchange   string            `json:"exchange"`
 	Key        string            `json:"key"`
 	IsMultiple bool              `json:"isMultiple"`
+	SetCount   Chain             `json:"setCount"`
+	Catch      Chain             `json:"catch"`
 	Meta       map[string]string `json:"meta"` // Meta for particular item
 }
 

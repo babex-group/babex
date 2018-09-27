@@ -37,3 +37,8 @@ type InitialMessage struct {
 	Meta   map[string]string `json:"meta"`
 	Catch  Chain             `json:"catch"`
 }
+
+// DataAll is container for total number of multiple-sent messages and shoud be placed in `data` key of a message.
+type DataAll struct {
+	All int `json:"all"`
+}
