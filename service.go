@@ -69,7 +69,7 @@ func (s *Service) Publish(message InitialMessage) error {
 //
 //  fmt.Println(catch.Error)
 func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
-	defer msg.Ack(false)
+	defer msg.Ack()
 
 	currentIndex := getCurrentChainIndex(msg.Chain)
 	if currentIndex == -1 {
@@ -160,7 +160,7 @@ func (s *Service) chainCursor(msg *Message) (Chain, ChainItem, error) {
 // You can use it instead amqp headers.
 // If you put the useMeta argument, the babex merges the current meta with useMeta.
 func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string) error {
-	err := msg.RawMessage.Ack(true)
+	err := msg.RawMessage.Ack()
 	if err != nil {
 		return err
 	}

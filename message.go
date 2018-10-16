@@ -5,8 +5,8 @@ import (
 )
 
 type RawMessage interface {
-	Ack(multiple bool) error
-	Nack(multiple bool) error
+	Ack() error
+	Nack() error
 }
 
 type Message struct {
@@ -22,12 +22,12 @@ type Message struct {
 	RawMessage     RawMessage
 }
 
-func (m Message) Ack(multiple bool) error {
-	return m.RawMessage.Ack(multiple)
+func (m Message) Ack() error {
+	return m.RawMessage.Ack()
 }
 
-func (m Message) Nack(multiple bool) error {
-	return m.RawMessage.Nack(multiple)
+func (m Message) Nack() error {
+	return m.RawMessage.Nack()
 }
 
 type InitialMessage struct {
