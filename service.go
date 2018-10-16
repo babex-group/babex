@@ -221,6 +221,10 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 	return nil
 }
 
+func (s *Service) GetChannels() Channels {
+	return s.adapter.Channels()
+}
+
 // Get channel for receive messages
 func (s *Service) GetMessages() (<-chan *Message, error) {
 	return s.adapter.GetMessages()
