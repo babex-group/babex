@@ -2,6 +2,8 @@ package babex
 
 import (
 	"encoding/json"
+
+	"github.com/opentracing/opentracing-go"
 )
 
 type RawMessage interface {
@@ -17,6 +19,7 @@ type Message struct {
 	Headers  map[string]interface{}
 	Config   []byte
 	Meta     map[string]string
+	Span     opentracing.Span
 
 	InitialMessage *InitialMessage
 	RawMessage     RawMessage
