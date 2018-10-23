@@ -29,32 +29,35 @@ func (s *Service) SetTracer(tracer opentracing.Tracer) {
 func NewService(adapter Adapter) (*Service, error) {
 	service := Service{
 		adapter: adapter,
+		ch:      make(chan *Message),
 	}
 
-	ch, err := service.adapter.GetMessages()
+	adapterCh, err := service.adapter.GetMessages()
 	if err != nil {
 		return nil, err
 	}
 
-	go func() {
-		for msg := range ch {
-			service.injectSpan(msg)
-			service.ch <- msg
+	go func(s *Service, adapterCh <-chan *Message) {
+		for msg := range adapterCh {
+			s.injectSpan(msg)
+			s.ch <- msg
 		}
-	}()
+		close(s.ch)
+	}(&service, adapterCh)
 
 	return &service, nil
 }
 
-func (s *Service) injectSpan(msg *Message) error {
+func (s *Service) injectSpan(msg *Message) {
 	ctx, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, msg.Meta)
 	if err != nil {
-		return err
+		//no context or error - make new empty span
+		msg.Span = opentracing.GlobalTracer().StartSpan("handle")
+		return
 	}
 	msg.Span = opentracing.GlobalTracer().StartSpan(
 		"handle",
 		opentracing.FollowsFrom(ctx))
-	return nil
 }
 
 // Publish message
@@ -99,7 +102,7 @@ func (s *Service) Publish(message InitialMessage) error {
 //
 //  fmt.Println(catch.Error)
 func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
-	defer msg.Span.Finish()
+	defer msg.FinishSpan()
 	currentIndex := getCurrentChainIndex(msg.Chain)
 	if currentIndex == -1 {
 		return ErrorNextIsNotDefined
@@ -193,7 +196,7 @@ func (s *Service) chainCursor(msg *Message) (Chain, ChainItem, error) {
 // You can use it instead amqp headers.
 // If you put the useMeta argument, the babex merges the current meta with useMeta.
 func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string) error {
-	defer msg.Span.Finish()
+	defer msg.FinishSpan()
 	err := msg.RawMessage.Ack(true)
 	if err != nil {
 		return err

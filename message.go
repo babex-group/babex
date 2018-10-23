@@ -45,6 +45,13 @@ func (m Message) Nack(multiple bool) error {
 	return m.RawMessage.Nack(multiple)
 }
 
+// FinishSpan checks the Span not to be nil and finishes it if the condition is true
+func (m Message) FinishSpan() {
+	if m.Span != nil {
+		m.Span.Finish()
+	}
+}
+
 type InitialMessage struct {
 	Chain  Chain             `json:"chain"`
 	Data   json.RawMessage   `json:"data"`
