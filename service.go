@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+
+	"github.com/opentracing/opentracing-go"
 )
 
 var (
@@ -16,15 +18,46 @@ var (
 
 type Service struct {
 	adapter Adapter
+	ch      chan *Message
+}
+
+func (s *Service) SetTracer(tracer opentracing.Tracer) {
+	opentracing.SetGlobalTracer(tracer)
 }
 
 // Create Babex service via the adapter interface
-func NewService(adapter Adapter) *Service {
+func NewService(adapter Adapter) (*Service, error) {
 	service := Service{
 		adapter: adapter,
+		ch:      make(chan *Message),
 	}
 
-	return &service
+	adapterCh, err := service.adapter.GetMessages()
+	if err != nil {
+		return nil, err
+	}
+
+	go func(s *Service, adapterCh <-chan *Message) {
+		for msg := range adapterCh {
+			s.injectSpan(msg)
+			s.ch <- msg
+		}
+		close(s.ch)
+	}(&service, adapterCh)
+
+	return &service, nil
+}
+
+func (s *Service) injectSpan(msg *Message) {
+	ctx, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, msg.Meta)
+	if err != nil {
+		//no context or error - make new empty span
+		msg.Span = opentracing.GlobalTracer().StartSpan("handle")
+		return
+	}
+	msg.Span = opentracing.GlobalTracer().StartSpan(
+		"handle",
+		opentracing.FollowsFrom(ctx))
 }
 
 // Publish message
@@ -69,6 +102,7 @@ func (s *Service) Publish(message InitialMessage) error {
 //
 //  fmt.Println(catch.Error)
 func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
+	defer msg.FinishSpan()
 	currentIndex := getCurrentChainIndex(msg.Chain)
 	if currentIndex == -1 {
 		return ErrorNextIsNotDefined
@@ -105,6 +139,8 @@ func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
 		Data:   b,
 		Meta:   msg.InitialMessage.Meta,
 	}
+
+	opentracing.GlobalTracer().Inject(msg.Span.Context(), opentracing.TextMap, m.Meta)
 
 	err = s.Publish(m)
 
@@ -160,6 +196,7 @@ func (s *Service) chainCursor(msg *Message) (Chain, ChainItem, error) {
 // You can use it instead amqp headers.
 // If you put the useMeta argument, the babex merges the current meta with useMeta.
 func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string) error {
+	defer msg.FinishSpan()
 	err := msg.RawMessage.Ack(true)
 	if err != nil {
 		return err
@@ -176,6 +213,7 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 
 	meta := Meta{}
 	meta.Merge(msg.Meta, useMeta)
+	opentracing.GlobalTracer().Inject(msg.Span.Context(), opentracing.TextMap, meta)
 
 	var items []interface{}
 
@@ -222,8 +260,8 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 }
 
 // Get channel for receive messages
-func (s *Service) GetMessages() (<-chan *Message, error) {
-	return s.adapter.GetMessages()
+func (s *Service) GetMessages() <-chan *Message {
+	return s.ch
 }
 
 // Get channel for errors

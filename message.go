@@ -2,6 +2,8 @@ package babex
 
 import (
 	"encoding/json"
+
+	"github.com/opentracing/opentracing-go"
 )
 
 type RawMessage interface {
@@ -17,6 +19,7 @@ type Message struct {
 	Headers  map[string]interface{}
 	Config   []byte
 	Meta     map[string]string
+	Span     opentracing.Span
 
 	InitialMessage *InitialMessage
 	RawMessage     RawMessage
@@ -40,6 +43,13 @@ func (m Message) Ack(multiple bool) error {
 
 func (m Message) Nack(multiple bool) error {
 	return m.RawMessage.Nack(multiple)
+}
+
+// FinishSpan checks the Span not to be nil and finishes it if the condition is true
+func (m Message) FinishSpan() {
+	if m.Span != nil {
+		m.Span.Finish()
+	}
 }
 
 type InitialMessage struct {
