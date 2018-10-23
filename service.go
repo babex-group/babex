@@ -49,7 +49,8 @@ func NewService(adapter Adapter) (*Service, error) {
 }
 
 func (s *Service) injectSpan(msg *Message) {
-	ctx, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, msg.Meta)
+	carrier := opentracing.TextMapCarrier(msg.Meta)
+	ctx, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, carrier)
 	if err != nil {
 		//no context or error - make new empty span
 		msg.Span = opentracing.GlobalTracer().StartSpan("handle")
@@ -57,7 +58,7 @@ func (s *Service) injectSpan(msg *Message) {
 	}
 	msg.Span = opentracing.GlobalTracer().StartSpan(
 		"handle",
-		opentracing.FollowsFrom(ctx))
+		opentracing.ChildOf(ctx))
 }
 
 // Publish message
@@ -140,7 +141,11 @@ func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
 		Meta:   msg.InitialMessage.Meta,
 	}
 
-	opentracing.GlobalTracer().Inject(msg.Span.Context(), opentracing.TextMap, m.Meta)
+	carrier := opentracing.TextMapCarrier{}
+	opentracing.GlobalTracer().Inject(msg.Span.Context(), opentracing.TextMap, carrier)
+	for k, v := range carrier {
+		m.Meta[k] = v
+	}
 
 	err = s.Publish(m)
 
@@ -213,7 +218,9 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 
 	meta := Meta{}
 	meta.Merge(msg.Meta, useMeta)
-	opentracing.GlobalTracer().Inject(msg.Span.Context(), opentracing.TextMap, meta)
+	carrier := opentracing.TextMapCarrier{}
+	opentracing.GlobalTracer().Inject(msg.Span.Context(), opentracing.TextMap, carrier)
+	meta.Merge(Meta(carrier))
 
 	var items []interface{}
 
