@@ -15,16 +15,82 @@ var (
 )
 
 type Service struct {
-	adapter Adapter
+	adapter    Adapter
+	middleware []Middleware
+	in         chan *Message
+	channels   chan *Channel
 }
 
 // Create Babex service via the adapter interface
-func NewService(adapter Adapter) *Service {
+func NewService(adapter Adapter, middleware ...Middleware) *Service {
 	service := Service{
-		adapter: adapter,
+		adapter:    adapter,
+		middleware: middleware,
+		in:         make(chan *Message),
+		channels:   make(chan *Channel),
 	}
 
+	go service.listen()
+
 	return &service
+}
+
+func (s *Service) listen() {
+	apply := func(msg *Message) error {
+		for _, m := range s.middleware {
+			finish, err := m.Use(msg)
+			if err != nil {
+				return err
+			}
+
+			msg.done = append(msg.done, finish)
+		}
+
+		return nil
+	}
+
+	channels := s.adapter.Channels()
+	if channels != nil {
+		for {
+			select {
+			case ch, ok := <-channels:
+				if !ok {
+					close(s.channels)
+					return
+				}
+
+				go func(ch *Channel) {
+					messageChannel := make(chan *Message)
+
+					sch := Channel{
+						ch: messageChannel,
+					}
+
+					s.channels <- &sch
+
+					for msg := range ch.GetMessages() {
+						apply(msg)
+						messageChannel <- msg
+					}
+
+					close(messageChannel)
+				}(ch)
+			}
+		}
+	} else {
+		msgs, _ := s.adapter.GetMessages()
+		for msg := range msgs {
+			apply(msg)
+			s.in <- msg
+		}
+	}
+}
+
+// Use the method for done middleware.
+func (s *Service) Done(msg *Message, err error) {
+	for _, done := range msg.done {
+		done(err)
+	}
 }
 
 // Publish message
@@ -69,6 +135,8 @@ func (s *Service) Publish(message InitialMessage) error {
 //
 //  fmt.Println(catch.Error)
 func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
+	s.Done(msg, catchErr)
+
 	currentIndex := getCurrentChainIndex(msg.Chain)
 	if currentIndex == -1 {
 		return ErrorNextIsNotDefined
@@ -106,7 +174,9 @@ func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
 		Meta:   msg.InitialMessage.Meta,
 	}
 
-	err = s.Publish(m)
+	if err := s.Publish(m); err != nil {
+		return err
+	}
 
 	return msg.Ack()
 }
@@ -160,6 +230,8 @@ func (s *Service) chainCursor(msg *Message) (Chain, ChainItem, error) {
 // You can use it instead amqp headers.
 // If you put the useMeta argument, the babex merges the current meta with useMeta.
 func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string) error {
+	s.Done(msg, nil)
+
 	err := msg.RawMessage.Ack()
 	if err != nil {
 		return err
@@ -222,12 +294,12 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 }
 
 func (s *Service) GetChannels() Channels {
-	return s.adapter.Channels()
+	return s.channels
 }
 
 // Get channel for receive messages
-func (s *Service) GetMessages() (<-chan *Message, error) {
-	return s.adapter.GetMessages()
+func (s *Service) GetMessages() <-chan *Message {
+	return s.in
 }
 
 // Get channel for errors

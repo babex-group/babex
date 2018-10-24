@@ -20,6 +20,8 @@ type Message struct {
 
 	InitialMessage *InitialMessage
 	RawMessage     RawMessage
+
+	done []MiddlewareDone
 }
 
 func NewMessage(initialMessage *InitialMessage, exchange, key string) *Message {
