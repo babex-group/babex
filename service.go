@@ -69,8 +69,6 @@ func (s *Service) Publish(message InitialMessage) error {
 //
 //  fmt.Println(catch.Error)
 func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
-	defer msg.Ack()
-
 	currentIndex := getCurrentChainIndex(msg.Chain)
 	if currentIndex == -1 {
 		return ErrorNextIsNotDefined
@@ -108,7 +106,9 @@ func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
 		Meta:   msg.InitialMessage.Meta,
 	}
 
-	return s.Publish(m)
+	err = s.Publish(m)
+
+	return msg.Ack()
 }
 
 // Count starts set count chain. Initial data for chain is object with key `all` containing total count of elements

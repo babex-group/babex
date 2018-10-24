@@ -22,6 +22,18 @@ type Message struct {
 	RawMessage     RawMessage
 }
 
+func NewMessage(initialMessage *InitialMessage, exchange, key string) *Message {
+	return &Message{
+		Exchange:       exchange,
+		Key:            key,
+		Chain:          initialMessage.Chain,
+		Data:           initialMessage.Data,
+		Config:         initialMessage.Config,
+		Meta:           initialMessage.Meta,
+		InitialMessage: initialMessage,
+	}
+}
+
 func (m Message) Ack() error {
 	return m.RawMessage.Ack()
 }
