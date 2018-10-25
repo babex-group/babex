@@ -19,6 +19,7 @@ type Service struct {
 	middleware []Middleware
 	in         chan *Message
 	channels   chan *Channel
+	handlers   Handlers
 }
 
 // Create Babex service via the adapter interface
@@ -28,6 +29,7 @@ func NewService(adapter Adapter, middleware ...Middleware) *Service {
 		middleware: middleware,
 		in:         make(chan *Message),
 		channels:   make(chan *Channel),
+		handlers:   Handlers{},
 	}
 
 	go service.listen()
@@ -70,7 +72,16 @@ func (s *Service) listen() {
 
 					for msg := range ch.GetMessages() {
 						apply(msg)
-						messageChannel <- msg
+
+						if h, ok := s.handlers[msg.Exchange+":"+msg.Key]; ok {
+							go func(msg *Message) {
+								err := h(msg)
+
+								s.Done(msg, err)
+							}(msg)
+						} else {
+							messageChannel <- msg
+						}
 					}
 
 					close(messageChannel)
@@ -81,7 +92,16 @@ func (s *Service) listen() {
 		msgs, _ := s.adapter.GetMessages()
 		for msg := range msgs {
 			apply(msg)
-			s.in <- msg
+
+			if h, ok := s.handlers[msg.Exchange+":"+msg.Key]; ok {
+				go func(msg *Message) {
+					err := h(msg)
+
+					s.Done(msg, err)
+				}(msg)
+			} else {
+				s.in <- msg
+			}
 		}
 	}
 }
@@ -309,4 +329,11 @@ func (s *Service) GetErrors() chan error {
 
 func (s *Service) Close() error {
 	return s.adapter.Close()
+}
+
+// Handling messages for a specific exchange and a topic.
+// If you use handler then GetMessages() or Channels()
+// don't receive a message for specific exchange and key.
+func (s *Service) Handler(exchange string, key string, handler Handler) {
+	s.handlers[exchange+":"+key] = handler
 }
