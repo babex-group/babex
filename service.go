@@ -103,6 +103,8 @@ func (s *Service) listen() {
 				s.in <- msg
 			}
 		}
+
+		close(s.in)
 	}
 }
 
