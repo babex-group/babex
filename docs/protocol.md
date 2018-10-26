@@ -109,5 +109,18 @@ Chain for example:
 
 ### Meta
 
-Meta is `map[string]string` property. It's like config, but config for users, meta for libraries. For example the Babex uses meta for the opentracing `TextMapCarrier`.
+Meta is `map[string]string` property. It's like config, but config for users, meta for libraries. For example the Babex uses meta for the opentracing `TextMapCarrier`. You can interact with meta from code:
+
+```go
+func example(s *babex.Service, msg *babex.Message) error {
+	fmt.Printf("current request id: %s\r\n", msg.Meta["requestId"])
+
+	newMeta := map[string]string{
+		"newRequestId": msg.Meta["requestId"]+"_child",
+	}
+
+	// you can pass meta object, the babex merge the new meta with the old meta
+	return s.Next(msg, "go to next", newMeta)
+}
+```
 
