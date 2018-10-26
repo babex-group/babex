@@ -143,3 +143,68 @@ Chain for example:
   }
 }
 ```
+
+### Catch
+
+When your service has an unhandled error, you can pass to the error chain. For example:
+
+```go
+func exampleCatch(s *babex.Service, msg *babex.Message) error {
+	var data struct {
+		Count int
+	}
+
+	if err := json.Unmarshal(msg.Data, &data); err != nil {
+		return s.Catch(msg, err, nil)
+	}
+
+	return s.Next(msg, data, nil)
+}
+```
+
+
+Chain for example:
+
+```json
+{
+  "chain": [
+    {"exchange": "first-topic"},
+    {"exchange": "second-topic"}
+  ],
+  "data": {
+    "count": 1
+  },
+  "config": {
+    "step": 1
+  },
+  "meta": {
+    "requestId": "parent"
+  },
+  "catch": [
+    {"exchange": "error-topic"}
+  ]
+}
+```
+
+When the service has the unhandled error, it push to the error to the catch chain, and call `msg.Ack()`. Catch message has  the next format:
+
+
+```json
+{
+  "chain": [
+    {"exchange": "error-topic"}
+  ],
+  "data": {
+    "error": "invalid json",
+    "exchange": "first-topic"
+  },
+  "config": {
+    "step": 1
+  },
+  "meta": {
+    "requestId": "parent"
+  }
+}
+```
+
+If catch is empty, then only will call the `msg.Ack`.
