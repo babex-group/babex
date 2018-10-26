@@ -106,3 +106,8 @@ Chain for example:
   }
 }
 ```
+
+### Meta
+
+Meta is `map[string]string` property. It's like config, but config for users, meta for libraries. For example the Babex uses meta for the opentracing `TextMapCarrier`.
+
