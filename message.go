@@ -1,6 +1,7 @@
 package babex
 
 import (
+	"context"
 	"encoding/json"
 )
 
@@ -20,6 +21,7 @@ type Message struct {
 
 	InitialMessage *InitialMessage
 	RawMessage     RawMessage
+	Context        context.Context
 
 	done []MiddlewareDone
 }
@@ -33,6 +35,7 @@ func NewMessage(initialMessage *InitialMessage, exchange, key string) *Message {
 		Config:         initialMessage.Config,
 		Meta:           initialMessage.Meta,
 		InitialMessage: initialMessage,
+		Context:        context.Background(),
 	}
 }
 
