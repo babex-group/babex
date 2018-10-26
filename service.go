@@ -74,11 +74,9 @@ func (s *Service) listen() {
 						apply(msg)
 
 						if h, ok := s.handlers[msg.Exchange+":"+msg.Key]; ok {
-							go func(msg *Message) {
-								err := h(msg)
+							err := h(msg)
 
-								s.Done(msg, err)
-							}(msg)
+							s.Done(msg, err)
 						} else {
 							messageChannel <- msg
 						}
@@ -94,11 +92,9 @@ func (s *Service) listen() {
 			apply(msg)
 
 			if h, ok := s.handlers[msg.Exchange+":"+msg.Key]; ok {
-				go func(msg *Message) {
-					err := h(msg)
+				err := h(msg)
 
-					s.Done(msg, err)
-				}(msg)
+				s.Done(msg, err)
 			} else {
 				s.in <- msg
 			}
