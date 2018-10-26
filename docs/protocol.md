@@ -207,4 +207,4 @@ When the service has the unhandled error, it push to the error to the catch chai
 }
 ```
 
-If catch is empty, then only will call the `msg.Ack`.
+If catch is empty, then only `msg.Ack` is called.
