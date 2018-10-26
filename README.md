@@ -7,6 +7,7 @@ The Babex allows you to make a chain of microservices on the fly with the help o
 ## Docs
 
 - [About the Babex](docs/protocol.md)
+- [Receiving messages](docs/receiving.md)
 - [Middleware](docs/middleware.md)
 
 ## Usage
