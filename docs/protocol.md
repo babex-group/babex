@@ -124,3 +124,22 @@ func example(s *babex.Service, msg *babex.Message) error {
 }
 ```
 
+Chain for example:
+
+```json
+{
+  "chain": [
+    {"exchange": "first-topic"},
+    {"exchange": "second-topic"}
+  ],
+  "data": {
+    "count": 1
+  },
+  "config": {
+    "step": 1
+  },
+  "meta": {
+    "requestId": "parent"
+  }
+}
+```
