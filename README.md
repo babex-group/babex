@@ -108,8 +108,5 @@ The service receive two message via chain, and increment the count.
 
 ## Adapters
 
-Babex has support adapters for Kafka and RabbitMQ.
-
-## Other languages
-
-- Node.js - https://github.com/spyzhov/babex-node
+- [Kafka](https://github.com/babex-group/babex-kafka)
+- [Rabbit](https://github.com/babex-group/babex-rabbit)
