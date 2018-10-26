@@ -2,101 +2,83 @@
 
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/matroskin13/babex)
 
-Babex allows you to make a chain of microservices on the fly with the help of RabbitMQ, Kafka.
+The Babex allows you to make a chain of microservices on the fly with the help of RabbitMQ, Kafka, etc.
+
+## Docs
+
+- [About the Babex](docs/protocol.md)
+- [Receiving messages](docs/receiving.md)
+- [Middleware](docs/middleware.md)
+
+## Adapters
+
+- [Kafka](https://github.com/babex-group/babex-kafka)
+- [Rabbit](https://github.com/babex-group/babex-rabbit)
 
 ## Usage
 
-For example, we create service which will add the number to counter:
-
-First, create service:
+For example, we create service which will add the number to counter. We will use the Kafka adapter.
 
 ```go
 package main
 
 import (
-    "encoding/json"
-    "log"
-
-    "github.com/matroskin13/babex"
-    "github.com/matroskin13/babex/adapters/rabbit"
+	"github.com/babex-group/babex"
+	"github.com/babex-group/babex-kafka"
+	"log"
+	"os"
+	"os/signal"
+	"encoding/json"
 )
 
 func main() {
-    adapter, err := rabbit.NewAdapter(rabbit.Options{
-        Address: "amqp://guest:guest@localhost:5672/",
-        Name:    "inc-service",
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
+	a, err := kafka.NewAdapter(kafka.Options{
+		Name:   "babex-sandbox"
+		Topics: []string{"example-topic"},
+		Addrs:  []string{"localhost:29092"},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    service := babex.NewService(adapter)
+	s := babex.NewService(a)
 
-    err = adapter.BindToExchange("example", "inc")
-    if err != nil {
-        log.Fatal(err)
-    }
+	defer s.Close()
+
+	s.Handler("example-topic", "", func(msg *babex.Message) error {
+		var data struct{
+			Count int `json:"count"`
+		}
+
+		if err := json.Unmarshal(msg.Data, &data); err != nil {
+			msg.Ack() // The message has invalid format, skip it.
+			return err
+		}
+
+		data.Count += 1
+
+		fmt.Printf("count = %v\r\n", data.Count)
+
+		return s.Next(msg, data, nil) // Next automatically use msg.Ack()
+	})
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt)
+
+	<- signals
 }
 ```
 
-Consume messages:
-
-```go
-msgs, err := service.GetMessages()
-if err != nil {
-    log.Fatal(err)
-}
-
-errChan := service.GetErrors()
-
-for {
-    select {
-    case msg := <-msgs:
-        data := struct {
-            Count int `json:"count"`
-        }{}
-
-        if err := json.Unmarshal(msg.Data, &data); err != nil {
-            log.Println(err)
-            msg.Ack(false)
-            break
-        }
-
-        cfg := struct {
-            IncStep int `json:"incStep"`
-        }{}
-
-        if err := json.Unmarshal(msg.Config, &cfg); err != nil {
-            log.Println(err)
-            msg.Ack(false)
-            break
-        }
-
-        data.Count += cfg.IncStep
-
-        log.Printf("count = %v, incStep = %v \r\n", data.Count, cfg.IncStep)
-
-        service.Next(msg, data, nil) // publish to next item of chain (with ack)
-    case err := <-errChan:
-        log.Fatal("err", err)
-    }
-}
-```
-
-And publish the message to example/inc:
+And publish the message to the topic "babex-sandbox":
 
 ```json
 {
   "data": {
     "count": 0
   },
-  "config": {
-    "incStep": 2
-  },
   "chain": [
     {
-      "exchange": "example",
-      "key": "inc"
+      "exchange": "example-topic"
     }
   ]
 }
@@ -105,7 +87,7 @@ And publish the message to example/inc:
 Check logs:
 
 ```bash
-$ 2018/06/13 13:51:35 count = 2, incStep = 2
+$ count = 1
 ```
 
 Excellent! Let's change the message:
@@ -115,17 +97,12 @@ Excellent! Let's change the message:
   "data": {
     "count": 0
   },
-  "config": {
-    "incStep": 2
-  },
   "chain": [
     {
-      "exchange": "example",
-      "key": "inc"
+      "exchange": "example-topic"
     },
     {
-      "exchange": "example",
-      "key": "inc"
+      "exchange": "example-topic"
     }
   ]
 }
@@ -134,14 +111,8 @@ Excellent! Let's change the message:
 Check logs:
 
 ```bash
-$ 2018/06/13 13:51:35 count = 2, incStep = 2
-$ 2018/06/13 13:51:35 count = 4, incStep = 2
+$ count = 1
+$ count = 2
 ```
 
-## Adapters
-
-Babex has support adapters for Kafka and RabbitMQ.
-
-## Other languages
-
-- Node.js - https://github.com/spyzhov/babex-node
+The service receive two message via chain, and increment the count.
