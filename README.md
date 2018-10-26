@@ -4,6 +4,11 @@
 
 The Babex allows you to make a chain of microservices on the fly with the help of RabbitMQ, Kafka, etc.
 
+## Docs
+
+- [About the Babex](docs/protocol.md)
+- [Middleware](docs/middleware.md)
+
 ## Usage
 
 For example, we create service which will add the number to counter. We will use the Kafka adapter.
