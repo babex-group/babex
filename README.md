@@ -10,6 +10,11 @@ The Babex allows you to make a chain of microservices on the fly with the help o
 - [Receiving messages](docs/receiving.md)
 - [Middleware](docs/middleware.md)
 
+## Adapters
+
+- [Kafka](https://github.com/babex-group/babex-kafka)
+- [Rabbit](https://github.com/babex-group/babex-rabbit)
+
 ## Usage
 
 For example, we create service which will add the number to counter. We will use the Kafka adapter.
@@ -111,8 +116,3 @@ $ count = 2
 ```
 
 The service receive two message via chain, and increment the count.
-
-## Adapters
-
-- [Kafka](https://github.com/babex-group/babex-kafka)
-- [Rabbit](https://github.com/babex-group/babex-rabbit)
