@@ -55,8 +55,8 @@ func TestService_AppyMiddleware(t *testing.T) {
 	s := NewService(&stub, middleware)
 
 	expectedMsg := &Message{
-		Exchange: "test",
-		Key: "test-key",
+		Exchange:   "test",
+		Key:        "test-key",
 		RawMessage: StubMessage{},
 	}
 
@@ -73,4 +73,28 @@ func TestService_AppyMiddleware(t *testing.T) {
 
 	assert.True(t, isUse)
 	assert.True(t, isFinish)
+}
+
+func TestService_Handler(t *testing.T) {
+	ch := make(chan *Message)
+	done := make(chan *Message)
+
+	stub := StubAdapter{OutCh: ch}
+	s := NewService(&stub)
+
+	s.Handler("test", "test-key", func(msg *Message) error {
+		done <- msg
+		return nil
+	})
+
+	expectedMsg := &Message{Exchange: "test", Key: "test-key"}
+
+	ch <- expectedMsg
+
+	select {
+	case msg := <-done:
+		assert.Equal(t, expectedMsg, msg)
+	case <-time.After(time.Microsecond * 1):
+		panic("cannot read message")
+	}
 }
