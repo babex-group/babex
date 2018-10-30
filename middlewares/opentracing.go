@@ -36,14 +36,13 @@ func NewOpentracingWithOpts(tracer opentracing.Tracer, opts OpentracingOptions) 
 func (m OpentracingMiddleware) Use(msg *babex.Message) (babex.MiddlewareDone, error) {
 	carrier := opentracing.TextMapCarrier(msg.Meta)
 	ctx, err := m.Tracer.Extract(opentracing.TextMap, carrier)
-	var opt opentracing.StartSpanOption
 
 	//if no error after context extraction - use it
 	if err == nil {
-		opt = opentracing.ChildOf(ctx)
+		msg.Span = m.Tracer.StartSpan(m.handlerName, opentracing.ChildOf(ctx))
+	} else {
+		msg.Span = m.Tracer.StartSpan(m.handlerName)
 	}
-
-	msg.Span = m.Tracer.StartSpan(m.handlerName, opt)
 
 	return func(err error) {
 		msg.Span.Finish()
