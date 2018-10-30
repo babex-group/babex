@@ -45,6 +45,19 @@ func (m OpentracingMiddleware) Use(msg *babex.Message) (babex.MiddlewareDone, er
 	}
 
 	return func(err error) {
+		m.addCarrier(msg)
 		msg.Span.Finish()
 	}, nil
+}
+
+func (m OpentracingMiddleware) addCarrier(msg *babex.Message) {
+	carrier := opentracing.TextMapCarrier{}
+	m.Tracer.Inject(msg.Span.Context(), opentracing.TextMap, carrier)
+	for k, v := range carrier {
+		// fill into meta for the Next method
+		msg.Meta[k] = v
+
+		// fill into intial message meta for the Catch method
+		msg.InitialMessage.Meta[k] = v
+	}
 }
