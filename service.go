@@ -57,7 +57,6 @@ func (s *Service) listen() {
 			select {
 			case ch, ok := <-channels:
 				if !ok {
-					close(s.channels)
 					return
 				}
 
@@ -68,7 +67,10 @@ func (s *Service) listen() {
 						ch: messageChannel,
 					}
 
-					s.channels <- &sch
+					select {
+					case s.channels <- &sch:
+					default:
+					}
 
 					for msg := range ch.GetMessages() {
 						apply(msg)
@@ -77,6 +79,10 @@ func (s *Service) listen() {
 							err := h(msg)
 
 							s.Done(msg, err)
+
+							if err != nil {
+								msg.Nack()
+							}
 						} else {
 							messageChannel <- msg
 						}
@@ -95,6 +101,10 @@ func (s *Service) listen() {
 				err := h(msg)
 
 				s.Done(msg, err)
+
+				if err != nil {
+					msg.Nack()
+				}
 			} else {
 				s.in <- msg
 			}
