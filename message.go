@@ -1,12 +1,15 @@
 package babex
 
 import (
+	"context"
 	"encoding/json"
+
+	"github.com/opentracing/opentracing-go"
 )
 
 type RawMessage interface {
-	Ack(multiple bool) error
-	Nack(multiple bool) error
+	Ack() error
+	Nack() error
 }
 
 type Message struct {
@@ -20,14 +23,31 @@ type Message struct {
 
 	InitialMessage *InitialMessage
 	RawMessage     RawMessage
+	Context        context.Context
+	Span           opentracing.Span
+
+	done []MiddlewareDone
 }
 
-func (m Message) Ack(multiple bool) error {
-	return m.RawMessage.Ack(multiple)
+func NewMessage(initialMessage *InitialMessage, exchange, key string) *Message {
+	return &Message{
+		Exchange:       exchange,
+		Key:            key,
+		Chain:          initialMessage.Chain,
+		Data:           initialMessage.Data,
+		Config:         initialMessage.Config,
+		Meta:           initialMessage.Meta,
+		InitialMessage: initialMessage,
+		Context:        context.Background(),
+	}
 }
 
-func (m Message) Nack(multiple bool) error {
-	return m.RawMessage.Nack(multiple)
+func (m Message) Ack() error {
+	return m.RawMessage.Ack()
+}
+
+func (m Message) Nack() error {
+	return m.RawMessage.Nack()
 }
 
 type InitialMessage struct {
@@ -37,4 +57,9 @@ type InitialMessage struct {
 	Meta   map[string]string `json:"meta"`
 	Catch  Chain             `json:"catch"`
 	When   When              `json:"when"`
+}
+
+// DataAll is container for total number of multiple-sent messages and shoud be placed in `data` key of a message.
+type DataAll struct {
+	All int `json:"all"`
 }
