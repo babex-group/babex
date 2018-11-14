@@ -35,7 +35,7 @@ func TestService_Receive(t *testing.T) {
 	}
 }
 
-func TestService_AppyMiddleware(t *testing.T) {
+func TestService_ApplyMiddleware(t *testing.T) {
 	var isUse bool
 	var isFinish bool
 
@@ -97,4 +97,71 @@ func TestService_Handler(t *testing.T) {
 	case <-time.After(time.Microsecond * 1):
 		panic("cannot read message")
 	}
+}
+
+func TestService_Publish(t *testing.T) {
+	chain := Chain{
+		{
+			Exchange:   "first",
+			Key:        "first-key",
+			Successful: true,
+		},
+		{
+			Exchange: "second",
+			Key:      "second-key",
+		},
+		{
+			Exchange: "third",
+			Key:      "third-key",
+		},
+	}
+
+	stub := StubAdapter{
+		onPublish: func(exchange string, key string, message InitialMessage) error {
+			assert.Equal(t, "second", exchange)
+			assert.Equal(t, "second-key", key)
+			return nil
+		},
+	}
+
+	s := NewService(&stub)
+
+	s.Publish(InitialMessage{
+		Chain: chain,
+	})
+}
+
+func TestService_PublishWithWhen(t *testing.T) {
+	chain := Chain{
+		{
+			Exchange:   "first",
+			Key:        "first-key",
+			Successful: true,
+		},
+		{
+			Exchange: "second",
+			Key:      "second-key",
+			When: When{
+				"$meta.status": 1,
+			},
+		},
+		{
+			Exchange: "third",
+			Key:      "third-key",
+		},
+	}
+
+	stub := StubAdapter{
+		onPublish: func(exchange string, key string, message InitialMessage) error {
+			assert.Equal(t, "third", exchange)
+			assert.Equal(t, "third-key", key)
+			return nil
+		},
+	}
+
+	s := NewService(&stub)
+
+	s.Publish(InitialMessage{
+		Chain: chain,
+	})
 }
