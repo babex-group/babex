@@ -6,40 +6,57 @@ import (
 )
 
 const (
-	CommandMeta = "$meta"
+	WhenEntityMeta = "$meta"
 )
 
 var (
-	ErrorInvalidKey   = errors.New("invalid key")
-	ErrorInvalidValue = errors.New("invalid value")
+	ErrorWhenInvalidKey   = errors.New("when: invalid key")
+	ErrorWhenInvalidValue = errors.New("when: invalid value")
 )
 
 type When map[string]interface{}
 
-func ApplyWhen(when When, msg *InitialMessage) (bool, error) {
+func ApplyWhen(when When, meta Meta) (bool, error) {
 	for k, w := range when {
 		keyParts := strings.Split(k, ".")
 
 		if len(keyParts) == 0 {
-			return true, ErrorInvalidKey
+			return true, ErrorWhenInvalidKey
 		}
 
-		switch keyParts[0] {
-		case CommandMeta:
+		from := keyParts[0]
+
+		var expectedValues []string
+		var value string
+
+		switch v := w.(type) {
+		case string:
+			expectedValues = []string{v}
+		case []string:
+			expectedValues = v
+		}
+
+		switch from {
+		case WhenEntityMeta:
 			if len(keyParts) < 2 {
-				return true, ErrorInvalidKey
+				return true, ErrorWhenInvalidValue
 			}
 
 			metaKey := keyParts[1]
-			metaValue := msg.Meta[metaKey]
-			expectedValue, ok := w.(string)
-			if !ok {
-				return true, ErrorInvalidValue
-			}
+			value = meta[metaKey]
+		}
 
-			if metaValue != expectedValue {
-				return false, nil
+		var isValid bool
+
+		for _, expected := range expectedValues {
+			if value == expected {
+				isValid = true
+				break
 			}
+		}
+
+		if !isValid {
+			return false, nil
 		}
 	}
 

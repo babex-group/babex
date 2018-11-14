@@ -123,15 +123,33 @@ func (s *Service) Done(msg *Message, err error) {
 
 // Publish message
 func (s *Service) Publish(message InitialMessage) error {
-	nextIndex := getCurrentChainIndex(message.Chain)
-	if nextIndex == -1 {
-		return ErrorNextIsNotDefined
+	meta := Meta{}
+	meta.Merge(message.Meta)
+
+	var nextElement ChainItem
+
+	for {
+		nextIndex := getCurrentChainIndex(message.Chain)
+		if nextIndex == -1 {
+			return ErrorNextIsNotDefined
+		}
+
+		next := message.Chain[nextIndex]
+
+		ok, err := ApplyWhen(next.When, meta)
+		if err != nil {
+			return err
+		}
+
+		if ok {
+			nextElement = next
+			break
+		}
+
+		message.Chain = SetCurrentItemSuccess(message.Chain)
 	}
 
-	nextElement := message.Chain[nextIndex]
-
-	meta := Meta{}
-	meta.Merge(message.Meta, nextElement.Meta)
+	meta.Merge(nextElement.Meta)
 
 	message.Meta = meta
 

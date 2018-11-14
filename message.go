@@ -56,7 +56,6 @@ type InitialMessage struct {
 	Config json.RawMessage   `json:"config"`
 	Meta   map[string]string `json:"meta"`
 	Catch  Chain             `json:"catch"`
-	When   When              `json:"when"`
 }
 
 // DataAll is container for total number of multiple-sent messages and shoud be placed in `data` key of a message.
