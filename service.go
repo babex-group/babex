@@ -20,6 +20,7 @@ type Service struct {
 	in         chan *Message
 	channels   chan *Channel
 	handlers   Handlers
+	onclose    chan error
 }
 
 // Create Babex service via the adapter interface
@@ -30,6 +31,7 @@ func NewService(adapter Adapter, middleware ...Middleware) *Service {
 		in:         make(chan *Message),
 		channels:   make(chan *Channel),
 		handlers:   Handlers{},
+		onclose:    make(chan error, 1),
 	}
 
 	go service.listen()
@@ -57,6 +59,7 @@ func (s *Service) listen() {
 			select {
 			case ch, ok := <-channels:
 				if !ok {
+					s.onclose <- nil
 					return
 				}
 
@@ -111,6 +114,7 @@ func (s *Service) listen() {
 		}
 
 		close(s.in)
+		s.onclose <- nil
 	}
 }
 
@@ -362,4 +366,12 @@ func (s *Service) Close() error {
 // don't receive a message for specific exchange and key.
 func (s *Service) Handler(exchange string, key string, handler Handler) {
 	s.handlers[exchange+":"+key] = handler
+}
+
+func (s *Service) Listen() error {
+	return <-s.onclose
+}
+
+func (s *Service) OnClose() <-chan error {
+	return s.onclose
 }
