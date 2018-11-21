@@ -15,29 +15,145 @@ var (
 )
 
 type Service struct {
-	adapter Adapter
+	adapter    Adapter
+	middleware []Middleware
+	in         chan *Message
+	channels   chan *Channel
+	handlers   Handlers
+	onclose    chan error
 }
 
 // Create Babex service via the adapter interface
-func NewService(adapter Adapter) *Service {
+func NewService(adapter Adapter, middleware ...Middleware) *Service {
 	service := Service{
-		adapter: adapter,
+		adapter:    adapter,
+		middleware: middleware,
+		in:         make(chan *Message),
+		channels:   make(chan *Channel),
+		handlers:   Handlers{},
+		onclose:    make(chan error, 1),
 	}
+
+	go service.listen()
 
 	return &service
 }
 
-// Publish message
-func (s *Service) Publish(message InitialMessage) error {
-	nextIndex := getCurrentChainIndex(message.Chain)
-	if nextIndex == -1 {
-		return ErrorNextIsNotDefined
+func (s *Service) listen() {
+	apply := func(msg *Message) error {
+		for _, m := range s.middleware {
+			finish, err := m.Use(msg)
+			if err != nil {
+				return err
+			}
+
+			msg.done = append(msg.done, finish)
+		}
+
+		return nil
 	}
 
-	nextElement := message.Chain[nextIndex]
+	channels := s.adapter.Channels()
+	if channels != nil {
+		for {
+			select {
+			case ch, ok := <-channels:
+				if !ok {
+					s.onclose <- nil
+					return
+				}
 
+				go func(ch *Channel) {
+					messageChannel := make(chan *Message)
+
+					sch := Channel{
+						ch: messageChannel,
+					}
+
+					select {
+					case s.channels <- &sch:
+					default:
+					}
+
+					for msg := range ch.GetMessages() {
+						apply(msg)
+
+						if h, ok := s.handlers[msg.Exchange+":"+msg.Key]; ok {
+							err := h(msg)
+
+							s.Done(msg, err)
+
+							if err != nil {
+								msg.Nack()
+							}
+						} else {
+							messageChannel <- msg
+						}
+					}
+
+					close(messageChannel)
+				}(ch)
+			}
+		}
+	} else {
+		msgs, _ := s.adapter.GetMessages()
+		for msg := range msgs {
+			apply(msg)
+
+			if h, ok := s.handlers[msg.Exchange+":"+msg.Key]; ok {
+				err := h(msg)
+
+				s.Done(msg, err)
+
+				if err != nil {
+					msg.Nack()
+				}
+			} else {
+				s.in <- msg
+			}
+		}
+
+		close(s.in)
+		s.onclose <- nil
+	}
+}
+
+// Use the method for done middleware.
+func (s *Service) Done(msg *Message, err error) {
+	for _, done := range msg.done {
+		done(err)
+	}
+}
+
+// Publish message
+func (s *Service) Publish(message InitialMessage) error {
 	meta := Meta{}
-	meta.Merge(message.Meta, nextElement.Meta)
+	meta.Merge(message.Meta)
+
+	var nextElement ChainItem
+
+	for {
+		nextIndex := getCurrentChainIndex(message.Chain)
+		if nextIndex == -1 {
+			return ErrorNextIsNotDefined
+		}
+
+		next := message.Chain[nextIndex]
+
+		ok, err := ApplyWhen(next.When, meta)
+		if err != nil {
+			return err
+		}
+
+		if ok {
+			nextElement = next
+			break
+		}
+
+		message.Chain = SetCurrentItemSuccess(message.Chain)
+	}
+
+	meta.Merge(nextElement.Meta)
 
 	message.Meta = meta
 
@@ -69,6 +185,8 @@ func (s *Service) Publish(message InitialMessage) error {
 //
 //  fmt.Println(catch.Error)
 func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
+	s.Done(msg, catchErr)
+
 	currentIndex := getCurrentChainIndex(msg.Chain)
 	if currentIndex == -1 {
 		return ErrorNextIsNotDefined
@@ -106,9 +224,11 @@ func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
 		Meta:   msg.InitialMessage.Meta,
 	}
 
-	err = s.Publish(m)
+	if err := s.Publish(m); err != nil {
+		return err
+	}
 
-	return msg.Ack(false)
+	return msg.Ack()
 }
 
 // Count starts set count chain. Initial data for chain is object with key `all` containing total count of elements
@@ -160,7 +280,9 @@ func (s *Service) chainCursor(msg *Message) (Chain, ChainItem, error) {
 // You can use it instead amqp headers.
 // If you put the useMeta argument, the babex merges the current meta with useMeta.
 func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string) error {
-	err := msg.RawMessage.Ack(true)
+	s.Done(msg, nil)
+
+	err := msg.RawMessage.Ack()
 	if err != nil {
 		return err
 	}
@@ -221,9 +343,13 @@ func (s Service) Next(msg *Message, data interface{}, useMeta map[string]string)
 	return nil
 }
 
+func (s *Service) GetChannels() Channels {
+	return s.channels
+}
+
 // Get channel for receive messages
-func (s *Service) GetMessages() (<-chan *Message, error) {
-	return s.adapter.GetMessages()
+func (s *Service) GetMessages() <-chan *Message {
+	return s.in
 }
 
 // Get channel for errors
@@ -233,4 +359,19 @@ func (s *Service) GetErrors() chan error {
 
 func (s *Service) Close() error {
 	return s.adapter.Close()
+}
+
+// Handling messages for a specific exchange and a topic.
+// If you use handler then GetMessages() or Channels()
+// don't receive a message for specific exchange and key.
+func (s *Service) Handler(exchange string, key string, handler Handler) {
+	s.handlers[exchange+":"+key] = handler
+}
+
+func (s *Service) Listen() error {
+	return <-s.onclose
+}
+
+func (s *Service) OnClose() <-chan error {
+	return s.onclose
 }
