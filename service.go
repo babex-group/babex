@@ -79,12 +79,9 @@ func (s *Service) listen() {
 						ch: messageChannel,
 					}
 
-					select {
-					case s.channels <- &sch:
-						s.logger.Log(fmt.Sprintf("debug_babex: success publish to GetChannels(). channel_info: %v", ch.Info))
-					default:
-						s.logger.Log(fmt.Sprintf("debug_error: cannot publish to GetChannels(). channel_info: %v", ch.Info))
-					}
+					s.channels <- &sch
+
+					s.logger.Log(fmt.Sprintf("debug_babex: success publish to GetChannels(). channel_info: %v", ch.Info))
 
 					for msg := range ch.GetMessages() {
 						s.logger.Log(fmt.Sprintf("debug_babex: receive message from channel.GetMessages(). channel_info: %v", ch.Info))
