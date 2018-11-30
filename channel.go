@@ -4,6 +4,8 @@ type Channels <-chan *Channel
 
 type Channel struct {
 	ch <-chan *Message
+
+	Info map[string]interface{}
 }
 
 func NewChannel(ch <-chan *Message) *Channel {

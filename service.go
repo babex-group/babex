@@ -3,6 +3,7 @@ package babex
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 )
 
@@ -21,6 +22,7 @@ type Service struct {
 	channels   chan *Channel
 	handlers   Handlers
 	onclose    chan error
+	logger     Logger
 }
 
 // Create Babex service via the adapter interface
@@ -32,11 +34,16 @@ func NewService(adapter Adapter, middleware ...Middleware) *Service {
 		channels:   make(chan *Channel),
 		handlers:   Handlers{},
 		onclose:    make(chan error, 1),
+		logger:     &StubLogger{},
 	}
 
 	go service.listen()
 
 	return &service
+}
+
+func (s *Service) SetLogger(logger Logger) {
+	s.logger = logger
 }
 
 func (s *Service) listen() {
@@ -63,6 +70,8 @@ func (s *Service) listen() {
 					return
 				}
 
+				s.logger.Log(fmt.Sprintf("debug_babex: receive channel. channel_info: %s", ch.Info))
+
 				go func(ch *Channel) {
 					messageChannel := make(chan *Message)
 
@@ -72,10 +81,14 @@ func (s *Service) listen() {
 
 					select {
 					case s.channels <- &sch:
+						s.logger.Log(fmt.Sprintf("debug_babex: success publish to GetChannels(). channel_info: %s", ch.Info))
 					default:
+						s.logger.Log(fmt.Sprintf("debug_error: cannot publish to GetChannels(). channel_info: %s", ch.Info))
 					}
 
 					for msg := range ch.GetMessages() {
+						s.logger.Log(fmt.Sprintf("debug_babex: receive message from channel.GetMessages(). channel_info: %s", ch.Info))
+
 						apply(msg)
 
 						if h, ok := s.handlers[msg.Exchange+":"+msg.Key]; ok {
@@ -89,7 +102,11 @@ func (s *Service) listen() {
 						} else {
 							messageChannel <- msg
 						}
+
+						s.logger.Log(fmt.Sprintf("debug_babex: success publish message to channel. channel_info: %s", ch.Info))
 					}
+
+					s.logger.Log(fmt.Sprintf("debug_babex: close channel. channel_info: %s", ch.Info))
 
 					close(messageChannel)
 				}(ch)
