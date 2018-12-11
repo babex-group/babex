@@ -142,7 +142,7 @@ func TestService_PublishWithWhen(t *testing.T) {
 			Exchange: "second",
 			Key:      "second-key",
 			When: When{
-				"$meta.status": 1,
+				"$meta.advertStatus": []string{"1", "2", "3"},
 			},
 		},
 		{
@@ -163,5 +163,6 @@ func TestService_PublishWithWhen(t *testing.T) {
 
 	s.Publish(InitialMessage{
 		Chain: chain,
+		Meta:  Meta{"advertStatus": "4"},
 	})
 }

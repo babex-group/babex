@@ -7,7 +7,7 @@ import (
 
 func TestApplyWhen_Meta(t *testing.T) {
 	meta := Meta{"one": "1"}
-	when := When{"$meta.one": "1"}
+	when := When{"$meta.one": []string{"1", "3"}}
 
 	res, err := ApplyWhen(when, meta)
 

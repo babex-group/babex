@@ -14,7 +14,7 @@ var (
 	ErrorWhenInvalidValue = errors.New("when: invalid value")
 )
 
-type When map[string]interface{}
+type When map[string][]string
 
 func ApplyWhen(when When, meta Meta) (bool, error) {
 	for k, w := range when {
@@ -26,15 +26,7 @@ func ApplyWhen(when When, meta Meta) (bool, error) {
 
 		from := keyParts[0]
 
-		var expectedValues []string
 		var value string
-
-		switch v := w.(type) {
-		case string:
-			expectedValues = []string{v}
-		case []string:
-			expectedValues = v
-		}
 
 		switch from {
 		case WhenEntityMeta:
@@ -48,7 +40,7 @@ func ApplyWhen(when When, meta Meta) (bool, error) {
 
 		var isValid bool
 
-		for _, expected := range expectedValues {
+		for _, expected := range w {
 			if value == expected {
 				isValid = true
 				break
