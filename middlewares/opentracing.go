@@ -33,7 +33,7 @@ func NewOpentracingWithOpts(tracer opentracing.Tracer, opts OpentracingOptions) 
 	}
 }
 
-func (m OpentracingMiddleware) Use(msg *babex.Message) (babex.MiddlewareDone, error) {
+func (m OpentracingMiddleware) Use(s *babex.Service, msg *babex.Message) (babex.MiddlewareDone, error) {
 	carrier := opentracing.TextMapCarrier(msg.Meta)
 	ctx, err := m.Tracer.Extract(opentracing.TextMap, carrier)
 

@@ -48,9 +48,9 @@ func (stub *StubAdapter) Channels() Channels {
 }
 
 type StubMiddleware struct {
-	OnUse func(msg *Message) (MiddlewareDone, error)
+	OnUse func(s *Service, msg *Message) (MiddlewareDone, error)
 }
 
-func (stubMiddleware StubMiddleware) Use(msg *Message) (MiddlewareDone, error) {
-	return stubMiddleware.OnUse(msg)
+func (stubMiddleware StubMiddleware) Use(s *Service, msg *Message) (MiddlewareDone, error) {
+	return stubMiddleware.OnUse(s, msg)
 }
