@@ -36,9 +36,9 @@ func main() {
 		return s.Next(msg, nil, nil)
 	})
 
-    if err := s.Listen(); err != nil {
-        log.Fatal(err)
-    }
+        if err := s.Listen(); err != nil {
+                log.Fatal(err)
+        }
 }
 ```
 
