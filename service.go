@@ -28,7 +28,7 @@ type Service struct {
 func NewServiceListener(adapter Adapter, middleware ...Middleware) *Service {
 	service := NewService(adapter, middleware...)
 
-	go service.listen()
+	go service.listen(true)
 
 	return service
 }
@@ -52,7 +52,7 @@ func (s *Service) SetLogger(logger Logger) {
 	s.logger = logger
 }
 
-func (s *Service) listen() error {
+func (s *Service) listen(receiveChannels bool) error {
 	apply := func(msg *Message) error {
 		for _, m := range s.middleware {
 			finish, err := m.Use(s, msg)
@@ -81,11 +81,13 @@ func (s *Service) listen() error {
 				go func(ch *Channel) {
 					messageChannel := make(chan *Message)
 
-					sch := Channel{
-						ch: messageChannel,
-					}
+					if receiveChannels {
+						sch := Channel{
+							ch: messageChannel,
+						}
 
-					s.channels <- &sch
+						s.channels <- &sch
+					}
 
 					s.logger.Log(fmt.Sprintf("debug_babex: success publish to GetChannels(). channel_info: %v", ch.Info))
 
@@ -102,7 +104,7 @@ func (s *Service) listen() error {
 							if err != nil {
 								msg.Nack()
 							}
-						} else {
+						} else if receiveChannels {
 							messageChannel <- msg
 						}
 
@@ -391,7 +393,7 @@ func (s *Service) Handler(exchange string, key string, handler Handler) {
 }
 
 func (s *Service) Listen() error {
-	return s.listen()
+	return s.listen(false)
 }
 
 func (s *Service) OnClose() <-chan error {
