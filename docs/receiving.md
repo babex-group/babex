@@ -36,10 +36,9 @@ func main() {
 		return s.Next(msg, nil, nil)
 	})
 
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt)
-
-	<-signals
+    if err := s.Listen(); err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 
