@@ -130,7 +130,7 @@ func (s *Service) listen(receiveChannels bool) error {
 				if err != nil {
 					msg.Nack()
 				}
-			} else {
+			} else if receiveChannels {
 				s.in <- msg
 			}
 		}
