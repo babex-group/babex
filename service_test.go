@@ -10,7 +10,7 @@ func TestService_Receive(t *testing.T) {
 	ch := make(chan *Message)
 
 	stub := StubAdapter{OutCh: ch}
-	s := NewService(&stub)
+	s := NewServiceListener(&stub)
 
 	expectedMsg := &Message{Exchange: "test", Key: "test-key"}
 
@@ -19,7 +19,7 @@ func TestService_Receive(t *testing.T) {
 	select {
 	case msg := <-s.GetMessages():
 		assert.Equal(t, expectedMsg, msg)
-	case <-time.After(time.Microsecond * 1):
+	case <-time.After(time.Microsecond * 100):
 		panic("cannot read message")
 	}
 
@@ -42,7 +42,7 @@ func TestService_ApplyMiddleware(t *testing.T) {
 	ch := make(chan *Message)
 
 	middleware := StubMiddleware{
-		OnUse: func(msg *Message) (MiddlewareDone, error) {
+		OnUse: func(s *Service, msg *Message) (MiddlewareDone, error) {
 			isUse = true
 
 			return func(err error) {
@@ -52,7 +52,7 @@ func TestService_ApplyMiddleware(t *testing.T) {
 	}
 
 	stub := StubAdapter{OutCh: ch}
-	s := NewService(&stub, middleware)
+	s := NewServiceListener(&stub, middleware)
 
 	expectedMsg := &Message{
 		Exchange:   "test",
@@ -86,6 +86,8 @@ func TestService_Handler(t *testing.T) {
 		done <- msg
 		return nil
 	})
+
+	go s.Listen()
 
 	expectedMsg := &Message{Exchange: "test", Key: "test-key"}
 
@@ -124,7 +126,7 @@ func TestService_Publish(t *testing.T) {
 		},
 	}
 
-	s := NewService(&stub)
+	s := NewServiceListener(&stub)
 
 	s.Publish(InitialMessage{
 		Chain: chain,
@@ -159,7 +161,7 @@ func TestService_PublishWithWhen(t *testing.T) {
 		},
 	}
 
-	s := NewService(&stub)
+	s := NewServiceListener(&stub)
 
 	s.Publish(InitialMessage{
 		Chain: chain,

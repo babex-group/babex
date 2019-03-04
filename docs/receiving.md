@@ -2,43 +2,10 @@
 
 You can receive messages in two ways:
 
-- Via channels
 - Via the Handler method
+- Via channels
 
-### Channels
-
-```go
-func main() {
-	a, err := kafka.NewAdapter(kafka.Options{
-		Name:   "babex-sandbox",
-		Topics: []string{"example-topic"},
-		Addrs:  []string{"localhost:29092"},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	s := babex.NewService(a)
-
-	defer s.Close()
-
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt)
-
-	for {
-		select {
-		case <-signals:
-			return
-		case msg := <-s.GetMessages():
-			fmt.Printf("receive message. exchange = %s", msg.Exchange)
-
-			s.Next(msg, nil, nil)
-		case err := <-s.GetErrors():
-			fmt.Printf("receive babex error. err = %s", err)
-		}
-	}
-}
-```
+The Handler way is preferring. Because the handler callback has the error tuple.
 
 ### Handler
 
@@ -76,4 +43,37 @@ func main() {
 }
 ```
 
-The Handler way is preferring. Because the handler callback has the error tuple.
+### Channels
+
+```go
+func main() {
+	a, err := kafka.NewAdapter(kafka.Options{
+		Name:   "babex-sandbox",
+		Topics: []string{"example-topic"},
+		Addrs:  []string{"localhost:29092"},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := babex.NewServiceListener(a)
+
+	defer s.Close()
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt)
+
+	for {
+		select {
+		case <-signals:
+			return
+		case msg := <-s.GetMessages():
+			fmt.Printf("receive message. exchange = %s", msg.Exchange)
+
+			s.Next(msg, nil, nil)
+		case err := <-s.GetErrors():
+			fmt.Printf("receive babex error. err = %s", err)
+		}
+	}
+}
+```

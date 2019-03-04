@@ -25,6 +25,14 @@ type Service struct {
 	logger     Logger
 }
 
+func NewServiceListener(adapter Adapter, middleware ...Middleware) *Service {
+	service := NewService(adapter, middleware...)
+
+	go service.listen()
+
+	return service
+}
+
 // Create Babex service via the adapter interface
 func NewService(adapter Adapter, middleware ...Middleware) *Service {
 	service := Service{
@@ -37,8 +45,6 @@ func NewService(adapter Adapter, middleware ...Middleware) *Service {
 		logger:     &StubLogger{},
 	}
 
-	go service.listen()
-
 	return &service
 }
 
@@ -46,10 +52,10 @@ func (s *Service) SetLogger(logger Logger) {
 	s.logger = logger
 }
 
-func (s *Service) listen() {
+func (s *Service) listen() error {
 	apply := func(msg *Message) error {
 		for _, m := range s.middleware {
-			finish, err := m.Use(msg)
+			finish, err := m.Use(s, msg)
 			if err != nil {
 				return err
 			}
@@ -67,7 +73,7 @@ func (s *Service) listen() {
 			case ch, ok := <-channels:
 				if !ok {
 					s.onclose <- nil
-					return
+					return nil
 				}
 
 				s.logger.Log(fmt.Sprintf("debug_babex: receive channel. channel_info: %v", ch.Info))
@@ -130,6 +136,8 @@ func (s *Service) listen() {
 		close(s.in)
 		s.onclose <- nil
 	}
+
+	return nil
 }
 
 // Use the method for done middleware.
@@ -383,7 +391,7 @@ func (s *Service) Handler(exchange string, key string, handler Handler) {
 }
 
 func (s *Service) Listen() error {
-	return <-s.onclose
+	return s.listen()
 }
 
 func (s *Service) OnClose() <-chan error {
