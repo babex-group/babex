@@ -1,14 +1,15 @@
 package babex
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/opentracing/opentracing-go"
 )
 
 type RawMessage interface {
-	Ack(multiple bool) error
-	Nack(multiple bool) error
+	Ack() error
+	Nack() error
 }
 
 type Message struct {
@@ -23,6 +24,10 @@ type Message struct {
 
 	InitialMessage *InitialMessage
 	RawMessage     RawMessage
+	Context        context.Context
+	Span           opentracing.Span
+
+	done []MiddlewareDone
 }
 
 func NewMessage(initialMessage *InitialMessage, exchange, key string) *Message {
@@ -34,15 +39,16 @@ func NewMessage(initialMessage *InitialMessage, exchange, key string) *Message {
 		Config:         initialMessage.Config,
 		Meta:           initialMessage.Meta,
 		InitialMessage: initialMessage,
+		Context:        context.Background(),
 	}
 }
 
-func (m Message) Ack(multiple bool) error {
-	return m.RawMessage.Ack(multiple)
+func (m Message) Ack() error {
+	return m.RawMessage.Ack()
 }
 
-func (m Message) Nack(multiple bool) error {
-	return m.RawMessage.Nack(multiple)
+func (m Message) Nack() error {
+	return m.RawMessage.Nack()
 }
 
 // FinishSpan checks the Span not to be nil and finishes it if the condition is true
