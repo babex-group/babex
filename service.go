@@ -8,10 +8,11 @@ import (
 )
 
 var (
-	ErrorNextNoCount    = errors.New("next does not contain count chain")
-	ErrorDataIsNotArray = errors.New("data is not array. next item of chain has isMultiple flag")
-	ErrorChainIsEmpty   = errors.New("chain is empty")
-	ErrorCloseConsumer  = errors.New("close consumer")
+	ErrorNextIsNotDefined = errors.New("next is not defined")
+	ErrorNextNoCount      = errors.New("next does not contain count chain")
+	ErrorDataIsNotArray   = errors.New("data is not array. next item of chain has isMultiple flag")
+	ErrorChainIsEmpty     = errors.New("chain is empty")
+	ErrorCloseConsumer    = errors.New("close consumer")
 )
 
 type Service struct {
