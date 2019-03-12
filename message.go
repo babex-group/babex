@@ -20,7 +20,6 @@ type Message struct {
 	Headers  map[string]interface{}
 	Config   []byte
 	Meta     map[string]string
-	Span     opentracing.Span
 
 	InitialMessage *InitialMessage
 	RawMessage     RawMessage
@@ -49,13 +48,6 @@ func (m Message) Ack() error {
 
 func (m Message) Nack() error {
 	return m.RawMessage.Nack()
-}
-
-// FinishSpan checks the Span not to be nil and finishes it if the condition is true
-func (m Message) FinishSpan() {
-	if m.Span != nil {
-		m.Span.Finish()
-	}
 }
 
 type InitialMessage struct {
