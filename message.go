@@ -20,11 +20,11 @@ type Message struct {
 	Headers  map[string]interface{}
 	Config   []byte
 	Meta     map[string]string
-	Span     opentracing.Span
 
 	InitialMessage *InitialMessage
 	RawMessage     RawMessage
 	Context        context.Context
+	Span           opentracing.Span
 
 	done []MiddlewareDone
 }
