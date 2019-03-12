@@ -8,6 +8,7 @@ type ChainItem struct {
 	SetCount   Chain             `json:"setCount"`
 	Catch      Chain             `json:"catch"`
 	Meta       map[string]string `json:"meta"` // Meta for particular item
+	When       When              `json:"when"`
 }
 
 type Chain []ChainItem
