@@ -8,11 +8,10 @@ import (
 )
 
 var (
-	ErrorNextIsNotDefined = errors.New("next is not defined")
-	ErrorNextNoCount      = errors.New("next does not contain count chain")
-	ErrorDataIsNotArray   = errors.New("data is not array. next item of chain has isMultiple flag")
-	ErrorChainIsEmpty     = errors.New("chain is empty")
-	ErrorCloseConsumer    = errors.New("close consumer")
+	ErrorNextNoCount    = errors.New("next does not contain count chain")
+	ErrorDataIsNotArray = errors.New("data is not array. next item of chain has isMultiple flag")
+	ErrorChainIsEmpty   = errors.New("chain is empty")
+	ErrorCloseConsumer  = errors.New("close consumer")
 )
 
 type Service struct {
@@ -87,9 +86,9 @@ func (s *Service) listen(receiveChannels bool) error {
 						}
 
 						s.channels <- &sch
-					}
 
-					s.logger.Log(fmt.Sprintf("debug_babex: success publish to GetChannels(). channel_info: %v", ch.Info))
+						s.logger.Log(fmt.Sprintf("debug_babex: success publish to GetChannels(). channel_info: %v", ch.Info))
+					}
 
 					for msg := range ch.GetMessages() {
 						s.logger.Log(fmt.Sprintf("debug_babex: receive message from channel.GetMessages(). channel_info: %v", ch.Info))
@@ -159,7 +158,7 @@ func (s *Service) Publish(message InitialMessage) error {
 	for {
 		nextIndex := getCurrentChainIndex(message.Chain)
 		if nextIndex == -1 {
-			return ErrorNextIsNotDefined
+			return nil
 		}
 
 		next := message.Chain[nextIndex]
@@ -213,7 +212,7 @@ func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
 
 	currentIndex := getCurrentChainIndex(msg.Chain)
 	if currentIndex == -1 {
-		return ErrorNextIsNotDefined
+		return nil
 	}
 	currentElement := msg.Chain[currentIndex]
 
@@ -288,7 +287,7 @@ func (s *Service) chainCursor(msg *Message) (Chain, ChainItem, error) {
 	chain := SetCurrentItemSuccess(msg.Chain)
 	nextIndex := getCurrentChainIndex(chain)
 	if nextIndex == -1 {
-		return nil, ChainItem{}, ErrorNextIsNotDefined
+		return nil, ChainItem{}, nil
 	}
 
 	nextElement := chain[nextIndex]
