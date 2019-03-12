@@ -25,7 +25,6 @@ type Message struct {
 	InitialMessage *InitialMessage
 	RawMessage     RawMessage
 	Context        context.Context
-	Span           opentracing.Span
 
 	done []MiddlewareDone
 }
@@ -49,13 +48,6 @@ func (m Message) Ack() error {
 
 func (m Message) Nack() error {
 	return m.RawMessage.Nack()
-}
-
-// FinishSpan checks the Span not to be nil and finishes it if the condition is true
-func (m Message) FinishSpan() {
-	if m.Span != nil {
-		m.Span.Finish()
-	}
 }
 
 type InitialMessage struct {
