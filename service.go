@@ -208,7 +208,7 @@ func (s *Service) Publish(message InitialMessage) error {
 //
 //  fmt.Println(catch.Error)
 func (s *Service) Catch(msg *Message, catchErr error, body []byte) error {
-	s.Done(msg, catchErr)
+	s.Done(msg, nil)
 
 	currentIndex := getCurrentChainIndex(msg.Chain)
 	if currentIndex == -1 {
