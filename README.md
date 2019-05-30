@@ -27,46 +27,44 @@ import (
 	"github.com/babex-group/babex"
 	"github.com/babex-group/babex-kafka"
 	"log"
-	"os"
-	"os/signal"
 	"encoding/json"
 )
 
 func main() {
-	a, err := kafka.NewAdapter(kafka.Options{
-		Name:   "babex-sandbox",
-		Topics: []string{"example-topic"},
-		Addrs:  []string{"localhost:29092"},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+    a, err := kafka.NewAdapter(kafka.Options{
+        Name:   "babex-sandbox",
+        Topics: []string{"example-topic"},
+        Addrs:  []string{"localhost:29092"},
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    s := babex.NewService(a)
+    
+    defer s.Close()
 
-	s := babex.NewService(a)
+    s.Handler("example-topic", "", func(msg *babex.Message) error {
+        var data struct{
+            Count int `json:"count"`
+        }
+        
+        if err := json.Unmarshal(msg.Data, &data); err != nil {
+            msg.Ack() // The message has invalid format, skip it.
+            return err
+        }
+        
+        data.Count += 1
+        
+        fmt.Printf("count = %v\r\n", data.Count)
+        
+        // Next automatically use msg.Ack(), and receive message to the next topic
+        return s.Next(msg, data, nil)
+    })
 
-	defer s.Close()
-
-	s.Handler("example-topic", "", func(msg *babex.Message) error {
-		var data struct{
-			Count int `json:"count"`
-		}
-
-		if err := json.Unmarshal(msg.Data, &data); err != nil {
-			msg.Ack() // The message has invalid format, skip it.
-			return err
-		}
-
-		data.Count += 1
-
-		fmt.Printf("count = %v\r\n", data.Count)
-
-		return s.Next(msg, data, nil) // Next automatically use msg.Ack()
-	})
-
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt)
-
-	<- signals
+    if err := s.Listen(); err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 
