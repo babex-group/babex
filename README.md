@@ -4,7 +4,7 @@
 
 The Babex allows you to make a chain of microservices on the fly with the help of RabbitMQ, Kafka, etc.
 
-<img src="example.jpg" width="350" title="example">
+![Alt text](example.jpg?raw=true "Title")
 
 ## Docs
 
