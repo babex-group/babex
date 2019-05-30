@@ -2,6 +2,12 @@
 
 You can use middleware for your service. It is very convenient for logging, modifying message, and etc.
 
+### Default middlewares:
+
+- [Opentracing](../middlewares/opentracing.go)
+
+### Custom middleware:
+
 For example we may to implement logger:
 
 ```go
