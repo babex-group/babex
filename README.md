@@ -2,9 +2,36 @@
 
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/matroskin13/babex)
 
-The Babex allows you to make a chain of microservices on the fly with the help of RabbitMQ, Kafka, etc.
+The Babex allows you to define a chain before the start of processing by all services. In other words, you service does not have a constant for the next element.
 
-![Alt text](example.jpg?raw=true "Title")
+The way without the Babex (Pseudocode):
+
+```go
+msg := GetMessageFromTopic("first-topic")
+// do something
+SendMessageToTopic("second-topic", newMessage)
+```
+
+The way with the Babex:
+
+Initialize initial chain
+
+```json
+{
+  "chain":[
+    {"topic": "first-topic"},
+    {"topic": "second-topic"}
+  ]
+}
+```
+
+And create service:
+
+```go
+msg := GetMessageFromTopic("first-topic")
+// do something
+SendMesssageToNext(newMessage)
+```
 
 ## Docs
 
