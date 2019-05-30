@@ -4,34 +4,9 @@
 
 The Babex allows you to define a chain before the start of processing by all services. In other words, you service does not have a constant for the next element.
 
-The way without the Babex (Pseudocode):
-
-```go
-msg := GetMessageFromTopic("first-topic")
-// do something
-SendMessageToTopic("second-topic", newMessage)
-```
-
-The way with the Babex:
-
-Initialize initial chain
-
-```json
-{
-  "chain":[
-    {"topic": "first-topic"},
-    {"topic": "second-topic"}
-  ]
-}
-```
-
-And create service:
-
-```go
-msg := GetMessageFromTopic("first-topic")
-// do something
-SendMesssageToNext(newMessage)
-```
+* **Reusability** You don't specify output topic/exchange of your services in your code.
+* **Flexibility** You can a build complex pipeline of services, and replace pipeline elements on the fly.
+* **Vendor agnostic** The Babex has adapters for Kafka, Rabbit, and etc.
 
 ## Docs
 
@@ -63,7 +38,7 @@ import (
 
 func main() {
 	a, err := kafka.NewAdapter(kafka.Options{
-		Name:   "babex-sandbox"
+		Name:   "babex-sandbox",
 		Topics: []string{"example-topic"},
 		Addrs:  []string{"localhost:29092"},
 	})
