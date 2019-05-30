@@ -4,6 +4,8 @@
 
 The Babex allows you to make a chain of microservices on the fly with the help of RabbitMQ, Kafka, etc.
 
+![Alt text](example.jpg?raw=true "Title")
+
 ## Docs
 
 - [About the Babex](docs/protocol.md)
