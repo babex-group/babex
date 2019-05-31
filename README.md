@@ -4,9 +4,9 @@
 
 The Babex allows you to define a chain before the start of processing by all services. In other words, you service does not have a constant for the next topic/exchange.
 
-* **Reusability** You don't specify output topic/exchange of your services in your code.
-* **Flexibility** You can a build complex pipeline of services, and replace pipeline elements on the fly.
-* **Vendor agnostic** The Babex has adapters for Kafka, Rabbit, and etc.
+* **Reusability.** You don't specify output topic/exchange of your services in your code.
+* **Flexibility.** You can a build complex pipeline of services, and replace pipeline elements on the fly.
+* **Vendor agnostic.** The Babex has adapters for Kafka, Rabbit, and etc.
 
 ## Docs
 
