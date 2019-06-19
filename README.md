@@ -2,10 +2,10 @@
 
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/matroskin13/babex)
 
-The Babex allows you to define a chain before the start of processing by all services. In other words, you service does not have a constant for the next topic/exchange.
+The Babex allows you to define a chain before the start of processing by all services. In other words, you service does not have a constant for the output topic/exchange.
 
 * **Reusability.** You don't specify output topic/exchange of your services in your code.
-* **Flexibility.** You can a build complex pipeline of services, and replace pipeline elements on the fly.
+* **Flexibility.** You can build ф complex pipeline of services, and replace pipeline elements on the fly.
 * **Vendor agnostic.** The Babex has adapters for Kafka, Rabbit, and etc.
 
 ## Docs
